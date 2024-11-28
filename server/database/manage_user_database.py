@@ -1,5 +1,16 @@
 import psycopg2
-from server.db import connect
+from db import connect
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="  %(name)s - %(levelname)s - %(message)s",
+    # logging.debug
+    # logging.info
+    # logging.warning
+    # logging.error
+    # logging.critical
+)
 
 
 def insert_into_users(table_name, username, email, password):
@@ -15,8 +26,16 @@ def insert_into_users(table_name, username, email, password):
                         """
                 cur.execute(query, (username, email, password))
                 conn.commit()
+
+                if cur.rowcount > 0:
+                    print("success with insertion")
+                    return True
+                else:
+                    print("insertion fail. conflict on email")
+                    return False
     except (psycopg2.DatabaseError, Exception) as err:
         print(f"error insering into table {table_name}: {err}")
+        return False
 
 
 def select_from_table(table_name, email):

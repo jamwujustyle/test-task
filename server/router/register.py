@@ -1,7 +1,18 @@
 from flask import Blueprint, jsonify, request
 import bcrypt
 import re
-from database.manage_user_database import insert_into_users
+from database.manage_user_database import insert_into_users, select_from_table
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="  %(name)s - %(levelname)s - %(message)s",
+    # logging.debug
+    # logging.info
+    # logging.warning
+    # logging.error
+    # logging.critical
+)
 
 
 class UserManagement:
@@ -21,12 +32,13 @@ class UserManagement:
             if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
                 return jsonify({"msg": "invalid email address"}), 400
             hashed_password = bcrypt.hashpw(password, bcrypt.gensalt())
-            if insert_into_users("users", username, email, password):
+
+            if insert_into_users("users", username, email, hashed_password):
                 return jsonify({"msg": "user successfully registered"}), 201
             else:
                 return jsonify({"msg": "error registering user"}), 500
 
-        @self.blueprint.route("/users/authenticate", methods="POST")
+        @self.blueprint.route("/users/authenticate", methods=["POST"])
         def authenticate():
             """authenticate"""
             data = request.get_json()
@@ -34,7 +46,18 @@ class UserManagement:
 
         @self.blueprint.route("/users/login", methods=["POST"])
         def login():
-            """loigin"""
+            """login"""
             data = request.get_json()
             email = data["email"]
             password = data["password"]
+
+            # def compare():
+            #     data_from_table = select_from_table("users", email)
+            #     try:
+            #         with data_from_table as dt:
+            #             et = dt["email"]
+            #             pt = dt["password"]
+            #             if et and pt:
+            #                 if
+            #     except Exception as ex:
+            #         print('')
