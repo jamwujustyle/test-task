@@ -10,6 +10,8 @@ def lead_config(filename, section):
         params = parser.items(section)
         for param in params:
             config[param[0]] = param[1]
+        #     print("inner section reached")
+        # print("last return")
     else:
         raise Exception(f"Section {section} not found in the {filename} file")
     return config

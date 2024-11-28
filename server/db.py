@@ -9,6 +9,11 @@ def connect():
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
             print("connected to database successfully")
+
+            # with conn.cursor() as cursor:
+            #     cursor.execute("select * from users;")
+            #     users = cursor.fetchall()
+            #     print(users)
         return conn
     except (psycopg2.DatabaseError, Exception) as error:
         print(f"failed connecting to database: {error}")
