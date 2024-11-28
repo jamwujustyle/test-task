@@ -1,0 +1,14 @@
+# Python bytecode files
+__pycache__/
+*.pyc
+
+# Virtual environment folders
+venv/
+env/
+
+# Logs
+*.log
+
+# OS-generated files (macOS, Windows)
+.DS_Store
+Thumbs.db
