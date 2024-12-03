@@ -1,16 +1,5 @@
 import psycopg2
 from db import connect
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="  %(name)s - %(levelname)s - %(message)s",
-    # logging.debug
-    # logging.info
-    # logging.warning
-    # logging.error
-    # logging.critical
-)
 
 
 def insert_into_users(table_name, username, email, password):

@@ -15,3 +15,6 @@ def lead_config(filename, section):
     else:
         raise Exception(f"Section {section} not found in the {filename} file")
     return config
+
+
+lead_config("database.ini", "postgresql")

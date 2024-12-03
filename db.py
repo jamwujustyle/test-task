@@ -1,16 +1,6 @@
 import psycopg2
-from config.config import lead_config
+from config import lead_config
 import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="  %(name)s - %(levelname)s - %(message)s",
-    # logging.debug
-    # logging.info
-    # logging.warning
-    # logging.error
-    # logging.critical
-)
 
 
 DB_CONFIG = lead_config("database.ini", "postgresql")
