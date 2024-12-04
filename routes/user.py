@@ -9,6 +9,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
     JWTManager,
+    get_jwt,
 )
 
 
@@ -35,6 +36,7 @@ class UserManagement:
             username = data["username"]
             email = data["email"]
             password = data["password"]
+            role = data.get("role", "user")
 
             if not username or not email or not password:
                 return jsonify({"msg": "missing required arguments"}), 500
@@ -42,12 +44,12 @@ class UserManagement:
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
             try:
                 is_success = insert_into_users(
-                    "users", username, email, hashed_password.decode("utf-8")
+                    "users", username, email, hashed_password.decode("utf-8"), role
                 )
                 if is_success:
                     return jsonify({"msg": "registered successfully"}), 201
                 else:
-                    return jsonify({"msg": "user already exists"})
+                    return jsonify({"msg": "user already exists"}), 400
             except Exception as ex:
                 return (jsonify({"msg": "error inserting into database"}), 500)
 
@@ -55,23 +57,27 @@ class UserManagement:
         def login():
 
             data = request.get_json()
-            username = data["username"]
+            # username = data["username"]
             email = data["email"]
             user = select_from_table("users", email=email)
             if not user:
                 return jsonify({"error": "user with that email does not exist"}), 404
-            access_token = create_access_token(identity=email)
+            access_token = create_access_token(
+                identity=user[2], additional_claims={"role": user[4]}
+            )
             return jsonify({"access token": access_token}), 201
 
         @self.blueprint.route("/users/verify", methods=["POST"])
-        def verify():
-            data = request.get_json()
-            email = data.get("email")
-            if email != "Unknown" and select_from_table("users", email=email):
-                handle_email_verification(email)
-                return jsonify({"msg": "found the user"})
-            else:
-                return jsonify({"msg": "user not found"}), 404
+
+        #############################   TODO
+        # def verify():
+        #     data = request.get_json()
+        #     email = data.get("email")
+        #     if email != "Unknown" and select_from_table("users", email=email):
+        #         handle_email_verification(email)
+        #         return jsonify({"msg": "found the user"})
+        #     else:
+        #         return jsonify({"msg": "user not found"}), 404
 
         @self.blueprint.route("/users/me", methods=["GET"])
         @jwt_required()
@@ -85,6 +91,7 @@ class UserManagement:
 
             if not user:
                 return jsonify({"msg": "user not found"}), 404
+
             return jsonify(
                 {
                     "msg": "access granted",
@@ -93,6 +100,21 @@ class UserManagement:
                     "email": user[2],
                 }
             )
+
+        @self.blueprint.route("/users/get", methods=["GET"])
+        @jwt_required()
+        def get_all_users():
+            """fetches all users from table "users" """
+            claims = get_jwt()
+            current_app.logger.debug(f"claims: {claims}")
+            if claims.get("role") != "admin":
+                return jsonify({"error": "access denied"}), 403
+            query = "SELECT * FROM users;"
+            with connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                users = cursor.fetchall()
+                return jsonify({"users": users}), 201
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)

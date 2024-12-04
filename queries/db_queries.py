@@ -2,18 +2,18 @@ import psycopg2
 from db import connect
 
 
-def insert_into_users(table_name, username, email, password):
+def insert_into_users(table_name, username, email, password, role):
     """insert user data into users to register"""
     try:
         with connect() as conn:
             with conn.cursor() as cur:
                 query = f"""
                             INSERT INTO {table_name}
-                            (username, email, password) 
-                            VALUES (%s, %s, %s) 
+                            (username, email, password, role) 
+                            VALUES (%s, %s, %s, %s) 
                             ON CONFLICT (email) DO NOTHING; 
                         """
-                cur.execute(query, (username, email, password))
+                cur.execute(query, (username, email, password, role))
                 conn.commit()
 
                 if cur.rowcount > 0:
@@ -40,6 +40,7 @@ def select_from_table(table_name, **kwargs):
                 else:
                     return None
                 result = cur.fetchone()
+
                 return result
     except (psycopg2.DatabaseError, Exception) as ex:
         print(f"error retrieving data from table {table_name}: {ex}")
