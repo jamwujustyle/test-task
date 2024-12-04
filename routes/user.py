@@ -159,5 +159,49 @@ class UserManagement:
                     201,
                 )
 
+        @self.blueprint.route("/users/put/<id>", methods=["PUT"])
+        @jwt_required()
+        def put(id):
+            """ "update user by id"""
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "invalid data"}), 400
+
+            username = data.get("username")
+            role = data.get("role")
+
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"msg": "access denied"}), 403
+
+            if not username and not role:
+                return jsonify({"error": "missing required arguments"}), 400
+            query = "UPDATE users SET "
+            update_fields = []
+            params = []
+            if username:
+                update_fields.append("username = %s")
+                params.append(username)
+            if role:
+                update_fields.append("role = %s")
+                params.append(role)
+            query += ", ".join(update_fields) + " WHERE id = %s"
+            params.append(id)
+
+            if not update_fields:
+                return (jsonify({"msg": "no fields to update"}), 400)
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(query, tuple(params))
+                    conn.commit()
+
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "user not found"}), 404
+
+                    return jsonify({"msg": "user updated successfully"}), 200
+            except Exception as ex:
+                return jsonify({"error": ex}), 500
+
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)
