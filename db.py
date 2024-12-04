@@ -1,5 +1,5 @@
 import psycopg2
-from config import lead_config
+from config.config import lead_config
 import logging
 
 
