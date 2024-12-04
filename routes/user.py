@@ -3,6 +3,7 @@ import bcrypt
 import re
 from queries.db_queries import insert_into_users, select_from_table
 from db import connect
+from psycopg2.extras import DictCursor
 from email_verification.verification import handle_email_verification
 from flask_jwt_extended import (
     create_access_token,
@@ -111,10 +112,52 @@ class UserManagement:
                 return jsonify({"error": "access denied"}), 403
             query = "SELECT * FROM users;"
             with connect() as conn:
-                cursor = conn.cursor()
+                cursor = conn.cursor(cursor_factory=DictCursor)
                 cursor.execute(query)
                 users = cursor.fetchall()
-                return jsonify({"users": users}), 201
+
+                users_data = [
+                    {
+                        "id": user["id"],
+                        "username": user["username"],
+                        "email": user["email"],
+                        "role": user["role"],
+                    }
+                    for user in users
+                ]
+
+                return (
+                    jsonify({"users": users_data}),
+                    201,
+                )
+
+        @self.blueprint.route("/users/get/<id>", methods=["GET", "POST"])
+        @jwt_required()
+        def get_user_by_id(id):
+            """get user by id"""
+            claims = get_jwt()
+            current_app.logger.debug(f"claims: {claims}")
+            query = "SELECT * FROM users WHERE id = %s"
+            if claims.get("role") != "admin":
+                return jsonify({"error": "access denied"}), 403
+            with connect() as conn:
+                cursor = conn.cursor(cursor_factory=DictCursor)
+                cursor.execute(query, (id,))
+                user = cursor.fetchone()
+                conn.commit()
+                if not user:
+                    return jsonify({"error": "user does not exist"}), 400
+                return (
+                    jsonify(
+                        {
+                            "id": user["id"],
+                            "username": user["username"],
+                            "email": user["email"],
+                            "role": user["role"],
+                        }
+                    ),
+                    201,
+                )
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)
