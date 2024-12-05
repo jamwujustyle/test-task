@@ -34,9 +34,9 @@ class UserManagement:
             if not data:
                 return (jsonify({"msg": "invalid data"}), 400)
 
-            username = data["username"]
-            email = data["email"]
-            password = data["password"]
+            username = data.get("username")
+            email = data.get("email")
+            password = data.get("password")
             role = data.get("role", "user")
 
             if not username or not email or not password:
@@ -257,6 +257,7 @@ class UserManagement:
                     new_data = select_from_table("users", id=id)
                     current_app.logger.debug(f"new data: {new_data}")
                     current_app.logger.debug(f"id passed: {id} Type: {type(id)}")
+                    conn.commit()
                     return (
                         jsonify(
                             {
@@ -268,6 +269,32 @@ class UserManagement:
                         200,
                     )
 
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/users/delete/<id>", methods=["DELETE"])
+        @jwt_required()
+        def delete(id):
+            """deletes by user id"""
+            claims = get_jwt()
+            if claims:
+                current_app.logger.debug("claims are taken")
+            if claims.get("role") != "admin":
+                return jsonify({"error": "access denied"}), 401
+            user = select_from_table("users", id=id)
+            if not user:
+                return jsonify({"error": "user not found"}), 404
+            query = "DELETE from users WHERE id = %s"
+            current_app.logger.debug(f"type of user {type(user)}")
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(
+                        query,
+                        (id,),
+                    )
+                    conn.commit()
+                    return jsonify({"deleted": user}), 201
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
