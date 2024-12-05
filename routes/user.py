@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app
 import bcrypt
-import re
 from queries.db_queries import insert_into_users, select_from_table
 from db import connect
 from psycopg2.extras import DictCursor
@@ -9,7 +8,6 @@ from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
     jwt_required,
-    JWTManager,
     get_jwt,
 )
 
@@ -20,7 +18,7 @@ SECRET_KEY = "24e2b6bb0774463e890d1ad7d562c801"
 class UserManagement:
     #######################  INIT ROUTING  ########################
     def __init__(self, app=None):
-        self.blueprint = Blueprint("auth", __name__)
+        self.blueprint = Blueprint("user-management", __name__)
         if app is not None:
             self.register_blueprint(app)
 

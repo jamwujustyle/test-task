@@ -47,3 +47,14 @@ def select_from_table(table_name, **kwargs):
     except (psycopg2.DatabaseError, Exception) as ex:
         print(f"error retrieving data from table {table_name}: {ex}")
         return None
+
+
+def insert_into_categories(table_name, **kwargs):
+    """insert into categories table"""
+    try:
+        with connect() as conn:
+            cursor = conn.cursor(cursor_factory=DictCursor)
+            query = f"INSERT INTO {tabl} "
+    except (psycopg2.DatabaseError, Exception) as ex:
+        print(f"error inserting into table {table_name}: {ex}")
+        return None
