@@ -58,7 +58,11 @@ class UserManagement:
         def login():
 
             data = request.get_json()
+            if not data:
+                return jsonify({"error": "bad request"}), 403
             # username = data["username"]
+            if not data.get("email") or not data.get("password"):
+                return jsonify({"error": "missing email or password"}), 403
             email = data["email"]
             user = select_from_table("users", email=email)
             if not user:
@@ -109,7 +113,7 @@ class UserManagement:
             claims = get_jwt()
             current_app.logger.debug(f"claims: {claims}")
             if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 403
+                return jsonify({"error": "access denied"}), 401
             query = "SELECT * FROM users;"
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
@@ -139,7 +143,7 @@ class UserManagement:
             current_app.logger.debug(f"claims: {claims}")
             query = "SELECT * FROM users WHERE id = %s"
             if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 403
+                return jsonify({"error": "access denied"}), 401
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
                 cursor.execute(query, (id,))
@@ -172,7 +176,7 @@ class UserManagement:
 
             claims = get_jwt()
             if claims.get("role") != "admin":
-                return jsonify({"msg": "access denied"}), 403
+                return jsonify({"msg": "access denied"}), 401
 
             if not username and not role:
                 return jsonify({"error": "missing required arguments"}), 400
@@ -202,6 +206,70 @@ class UserManagement:
                     return jsonify({"msg": "user updated successfully"}), 200
             except Exception as ex:
                 return jsonify({"error": ex}), 500
+
+        @self.blueprint.route("/users/patch/<id>", methods=["PATCH"])
+        @jwt_required()
+        def patch(id):
+
+            try:
+                id = int(id)
+            except ValueError as ve:
+                return jsonify({"err": "value error"}), 400
+            current_app.logger.debug(f"id is: {id} and the type is: {type(id)}")
+            """UPDATES USER PARTIALLY"""
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "invalid request"}), 400
+            username = data.get("username")
+            role = data.get("role")
+            if username and role:
+                current_app.logger.debug("request is taken")
+
+            if not role and not username:
+                return jsonify({"error": "missing required arguments"}), 400
+
+            claims = get_jwt()
+            if claims:
+                current_app.logger.debug("claims are taken")
+
+            if claims.get("role") != "admin":
+                return jsonify({"error": "access denied"}), 401
+            query = "UPDATE users SET "
+
+            update_fields = []
+            params = []
+
+            if username:
+                update_fields.append("username = %s")
+                params.append(username)
+            if role:
+                update_fields.append("role = %s")
+                params.append(role)
+            query += ", ".join(update_fields) + " WHERE id = %s"
+            params.append(id)
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(query, tuple(params))
+
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "empty request"}), 422
+                    new_data = select_from_table("users", id=id)
+                    current_app.logger.debug(f"new data: {new_data}")
+                    current_app.logger.debug(f"id passed: {id} Type: {type(id)}")
+                    return (
+                        jsonify(
+                            {
+                                "msg": "User updated",
+                                "username": new_data["username"],
+                                "role": new_data["role"],
+                            }
+                        ),
+                        200,
+                    )
+
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)

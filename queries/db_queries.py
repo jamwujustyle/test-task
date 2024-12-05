@@ -1,5 +1,6 @@
 import psycopg2
 from db import connect
+from psycopg2.extras import DictCursor
 
 
 def insert_into_users(table_name, username, email, password, role):
@@ -31,12 +32,13 @@ def select_from_table(table_name, **kwargs):
     """retrieve user data from database for auth and login"""
     try:
         with connect() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
                 if "email" in kwargs:
                     query = f"SELECT * FROM {table_name} WHERE email = %s;"
                     cur.execute(query, (kwargs["email"],))
-                elif "id" is kwargs:
+                elif "id" in kwargs:
                     query = f"SELECT * FROM {table_name} WHERE id = %s"
+                    cur.execute(query, (kwargs["id"],))
                 else:
                     return None
                 result = cur.fetchone()
