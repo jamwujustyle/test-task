@@ -38,7 +38,7 @@ class UserManagement:
             role = data.get("role", "user")
 
             if not username or not email or not password:
-                return jsonify({"msg": "missing required arguments"}), 500
+                return jsonify({"msg": "missing required arguments"}), 400
 
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
             try:

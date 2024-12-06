@@ -1,6 +1,7 @@
 import psycopg2
 from db import connect
 from psycopg2.extras import DictCursor
+from flask import current_app
 
 
 def insert_into_users(table_name, username, email, password, role):
@@ -54,7 +55,17 @@ def insert_into_categories(table_name, **kwargs):
     try:
         with connect() as conn:
             cursor = conn.cursor(cursor_factory=DictCursor)
-            query = f"INSERT INTO {tabl} "
+            query = f"INSERT INTO {table_name} (name, description, parent_category_id) VALUES (%s,%s,%s) ON CONFLICT (name) DO NOTHING"
+            cursor.execute(
+                query,
+                (
+                    kwargs.get("name"),
+                    kwargs.get("description"),
+                    kwargs.get("parent_category_id"),
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
     except (psycopg2.DatabaseError, Exception) as ex:
         print(f"error inserting into table {table_name}: {ex}")
         return None
