@@ -223,7 +223,7 @@ class UserManagement:
             if username and role:
                 current_app.logger.debug("request is taken")
 
-            if not role and not username:
+            if not role or not username:
                 return jsonify({"error": "missing required arguments"}), 400
 
             claims = get_jwt()

@@ -13,6 +13,7 @@ class CategoryManagement:
     ###########################INIT ROUTING################################
     def __init__(self, app=None):
         self.blueprint = Blueprint("category-management", __name__)
+        self.table_name = "categories"
         if app is not None:
             self.register_blueprint(app)
 
@@ -20,7 +21,6 @@ class CategoryManagement:
         @self.blueprint.route("/categories/post", methods=["POST"])
         @jwt_required()
         def post():
-            table_name = "categories"
             data = request.get_json()
             if not data:
                 current_app.logger.debug("invalid request")
@@ -70,7 +70,7 @@ class CategoryManagement:
                 )
                 if category_id:
                     current_app.logger.debug(
-                        f"successfully inserted into table {table_name} with id of {category_id}"
+                        f"successfully inserted into table {self.table_name} with id of {category_id}"
                     )
                     return jsonify({"msg": "category has been created "}), 201
                 else:
@@ -81,6 +81,108 @@ class CategoryManagement:
             except Exception as ex:
                 current_app.logger.debug("error manipulating database")
                 return jsonify({"error": str(ex)}), 400
+
+        @self.blueprint.route("/categories/get", methods=["GET"])
+        def get_all_categories():
+            query = f"SELECT * FROM {self.table_name};"
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(query)
+                    categories = cursor.fetchall()
+                    if categories:
+                        categories_data = [
+                            {
+                                "id": category["id"],
+                                "name": category["name"],
+                                "description": category["description"],
+                                "parent_category_id": category["parent_category_id"],
+                                "created_at": category["created_at"],
+                                "updated_at": category["updated_at"],
+                            }
+                            for category in categories
+                        ]
+                        return jsonify({"categories": categories_data})
+                    else:
+                        return (
+                            jsonify(
+                                {"error": "error retrieving categories from table"}
+                            ),
+                            500,
+                        )
+
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/categories/patch/<id>", methods=["PATCH"])
+        @jwt_required()
+        def patch(id):
+            data = request.get_json()
+            name = data.get("name")
+            description = data.get("description")
+            updated_at = data.get("updated_at")
+            if not name and not description:
+                current_app.logger.debug(
+                    "missing required arguments. at least 1 fields is neede to update"
+                )
+                return jsonify({"error": "missing arguments"}), 400
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                current_app.logger.debug(
+                    "insuffisient permissions. role 'admin' required"
+                )
+                return jsonify({"error": "access denied"}), 409
+            update_fields = []
+            params = []
+            query = f"UPDATE {self.table_name} SET "
+            try:
+                if name:
+                    update_fields.append("name = %s")
+                    params.append(name)
+                if description:
+                    update_fields.append("description = %s")
+                    params.append(description)
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 422
+            query += ", ".join(update_fields) + " WHERE id = %s"
+            params.append(id)
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(
+                        query,
+                        tuple(params),
+                    )
+                    if cursor.rowcount == 0:
+                        return (
+                            jsonify(
+                                {f"error": "error inserting into table {table_name}"}
+                            ),
+                            400,
+                        )
+
+                    new_data = select_from_table(self.table_name, id=id)
+                    current_app.logger.debug(
+                        f"new data: {new_data}\nid passed: {id} type of id {type(id)}"
+                    )
+                    conn.commit()
+                    return (
+                        jsonify(
+                            {
+                                "msg": "user updated",
+                                "name": name,
+                                "description": description,
+                                "updated_at": updated_at,
+                            }
+                        ),
+                        200,
+                    )
+
+            except Exception as ex:
+                current_app.logger.debug(
+                    f"error occured during insertion into {self.table_name}"
+                )
+                return jsonify({"error": str(ex)}), 500
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)
