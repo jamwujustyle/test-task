@@ -5,6 +5,7 @@ from psycopg2.extras import DictCursor
 from queries.db_queries import (
     select_from_table,
     insert_into_users,
+    insert_into_categories,
 )
 
 
@@ -33,14 +34,12 @@ class CategoryManagement:
                 current_app.logger.debug("missing description field in request body")
                 return jsonify({"error": "missing required arguments"})
             parent_category_id = data.get("parent_category_id")
-            if not parent_category_id:
-                current_app.logger.debug("missing parent id")
-                return jsonify({"error": "missing required arguments"}), 400
+            # if not parent_category_id:
+            #     current_app.logger.debug("missing parent id")
+            #     return jsonify({"error": "missing required arguments"}), 400
             claims = get_jwt()
             if claims.get("role") != "admin":
-                current_app.logger.debug(
-                    "does not containt headers necessary to access endpoint"
-                )
+                current_app.logger.debug("access denied: insufficient permissions")
                 return jsonify({"error": "access denied"}), 403
             try:
                 parent_category_id = (
@@ -48,25 +47,37 @@ class CategoryManagement:
                 )
             except ValueError:
                 return jsonify({"error": ValueError}), 400
-            query = insert_into_categories = (
-                f"INSERT INTO {table_name} (name, description, parent_category_id) VALUES (%s, %s, %s) ON CONFLICT (name) DO NOTHING"
-            )
+            # query = insert_into_categories = (
+            #     f"INSERT INTO {table_name} (name, description, parent_category_id) VALUES (%s, %s, %s) ON CONFLICT (name) DO NOTHING"
+            # )
             try:
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(
-                        query,
-                        (
-                            name,
-                            description,
-                            parent_category_id,
-                        ),
-                    )
-                    conn.commit()
+                # with connect() as conn:
+                #     cursor = conn.cursor(cursor_factory=DictCursor)
+                #     cursor.execute(
+                #         query,
+                #         (
+                #             name,
+                #             description,
+                #             parent_category_id,
+                #         ),
+                #     )
+                #     conn.commit()
+                category_id = insert_into_categories(
+                    "categories",
+                    name=name,
+                    description=description,
+                    parent_category_id=parent_category_id,
+                )
+                if category_id:
                     current_app.logger.debug(
-                        f"successfully inserted into table {table_name}"
+                        f"successfully inserted into table {table_name} with id of {category_id}"
                     )
-                    return jsonify({"msg": "category has been created"}), 201
+                    return jsonify({"msg": "category has been created "}), 201
+                else:
+                    current_app.logger.debug(
+                        f"category with name {name} already exists"
+                    )
+                    return jsonify({"error": "category name already exists"}), 409
             except Exception as ex:
                 current_app.logger.debug("error manipulating database")
                 return jsonify({"error": str(ex)}), 400

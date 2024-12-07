@@ -53,9 +53,12 @@ def select_from_table(table_name, **kwargs):
 def insert_into_categories(table_name, **kwargs):
     """insert into categories table"""
     try:
+        query = """INSERT INTO categories (name, description, parent_category_id) 
+        VALUES (%s,%s,%s)
+        ON CONFLICT (name) DO NOTHING
+        RETURNING id;"""
         with connect() as conn:
             cursor = conn.cursor(cursor_factory=DictCursor)
-            query = f"INSERT INTO {table_name} (name, description, parent_category_id) VALUES (%s,%s,%s) ON CONFLICT (name) DO NOTHING"
             cursor.execute(
                 query,
                 (
@@ -64,8 +67,9 @@ def insert_into_categories(table_name, **kwargs):
                     kwargs.get("parent_category_id"),
                 ),
             )
+            result = cursor.fetchone()
             conn.commit()
-            return cursor.rowcount > 0
+            return result["id"] if result else None
     except (psycopg2.DatabaseError, Exception) as ex:
         print(f"error inserting into table {table_name}: {ex}")
         return None
