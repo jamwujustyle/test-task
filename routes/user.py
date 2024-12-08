@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 import bcrypt
+from datetime import timedelta
 from queries.db_queries import insert_into_users, select_from_table
 from db import connect
 from psycopg2.extras import DictCursor
@@ -66,7 +67,9 @@ class UserManagement:
             if not user:
                 return jsonify({"error": "user with that email does not exist"}), 404
             access_token = create_access_token(
-                identity=user[2], additional_claims={"role": user[4]}
+                identity=user[2],
+                additional_claims={"role": user[4]},
+                expires_delta=timedelta(hours=12),
             )
             return jsonify({"access token": access_token}), 201
 

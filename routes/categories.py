@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, request, current_app
 from db import connect
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt
 from psycopg2.extras import DictCursor
 from queries.db_queries import (
     select_from_table,
     insert_into_users,
     insert_into_categories,
+    delete_records_from_table,
 )
 
 
@@ -114,6 +115,81 @@ class CategoryManagement:
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
+        @self.blueprint.route("/categories/get/<id>", methods=["GET"])
+        def get_category_by_id(id):
+
+            try:
+                converted_id = int(id) if id is not None else None
+                category = select_from_table(self.table_name, id=converted_id)
+                if category:
+                    return (
+                        jsonify(
+                            {
+                                "name": category.get("name"),
+                                "description": category.get("description"),
+                                "parent_category_id": category.get(
+                                    "parent_category_id"
+                                ),
+                                "created_at": category.get("created_at"),
+                                "updated_at": category.get("updated_at"),
+                            }
+                        ),
+                        200,
+                    )
+                else:
+                    return jsonify({"error": "could not find category at this id"}), 404
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/categories/put/<id>", methods=["PUT"])
+        @jwt_required()
+        def put(id):
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "invalid json format"})
+            name = data.get("name")
+            description = data.get("description")
+            parent_category_id = data.get("parent_category_id")
+            updated_at = data.get("updated_at")
+
+            converted_id = int(id) if id is not None else None
+            if not name and not description:
+                current_app.logger.debug("no data is provided")
+                return jsonify({"error": "missing required arguments"}), 422
+            query = "UPDATE categories SET "
+            update_fields = []
+            params = []
+            if name:
+                update_fields.append("name = %s")
+                params.append(name)
+            if description:
+                update_fields.append("description = %s")
+                params.append(description)
+            query += " ,".join(update_fields) + " WHERE id = %s"
+            params.append(id)
+
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(query, tuple(params))
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "insertion into table failed"}), 400
+                    new_data = select_from_table(self.table_name, id=converted_id)
+                    current_app.logger.debug(
+                        f"new data: {new_data}, id passed: {id}, type of id {type(id)}"
+                    )
+                    conn.commit()
+                    return jsonify(
+                        {
+                            "msg": "user updated",
+                            "name": name,
+                            "description": description,
+                            "updated_at": updated_at,
+                        }
+                    )
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
         @self.blueprint.route("/categories/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
@@ -155,9 +231,7 @@ class CategoryManagement:
                     )
                     if cursor.rowcount == 0:
                         return (
-                            jsonify(
-                                {f"error": "error inserting into table {table_name}"}
-                            ),
+                            jsonify({f"error": "error inserting into table "}),
                             400,
                         )
 
@@ -183,6 +257,13 @@ class CategoryManagement:
                     f"error occured during insertion into {self.table_name}"
                 )
                 return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/categories/delete/<id>", methods=["DELETE"])
+        @jwt_required()
+        def delete(id):
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"error": "insuffisient permissions"}), 409
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint)

@@ -1,7 +1,7 @@
 import psycopg2
 from db import connect
 from psycopg2.extras import DictCursor
-from flask import current_app
+from flask import current_app, jsonify
 
 
 def insert_into_users(table_name, username, email, password, role):
@@ -73,3 +73,14 @@ def insert_into_categories(table_name, **kwargs):
     except (psycopg2.DatabaseError, Exception) as ex:
         print(f"error inserting into table {table_name}: {ex}")
         return None
+
+
+def delete_records_from_table(table_name, **kwargs):
+    query = f"DELETE FROM {table_name} WHERE id = %s"
+    try:
+        with connect() as conn:
+            cursor = conn.cursor(cursor_factory=DictCursor)
+            cursor.execute(query, (kwargs))
+            conn.commit()
+    except Exception as ex:
+        return jsonify({"error": str(ex)}), 500
