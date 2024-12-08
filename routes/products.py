@@ -20,6 +20,9 @@ class ProductManagement:
             if not data:
                 current_app.logger.debug("request body is empty")
                 return jsonify({"error": "missinq required arguments"}), 400
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"error": "insufficient permissions"}), 401
             name = data.get("name")
             description = data.get("description")
             category_id = data.get("category_id")
@@ -35,54 +38,38 @@ class ProductManagement:
             except ValueError as ex:
                 current_app.logger.debug("error converting category_id to integer")
                 return jsonify({"error": str(ex)}), 409
+
             try:
                 category = select_from_table("categories", id=category_id)
-                if not category:
-                    return jsonify({"error": "category not found"}), 404
+                if category is None:
+                    return jsonify({"error": "cant get category"})
+                current_app.logger.debug(f"here is your category: {category}")
             except Exception as ex:
-                current_app.logger.debug("failed to find the category")
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                current_app.logger.debug("user needs to have role admin")
-                return (jsonify({"error": "insufficient permissions"}), 401)
-            query = f"""
-              INSERT INTO {self.table_name} (name, description, category_id, price)
-              VALUES (%s, %s, %s, %s) 
-              RETURNING id, name, description, price, category_id;
-              """
-            # 409
+                return jsonify({"error": str(ex)}), 404
+            query = f"""INSERT INTO {self.table_name} (name, description, category_id, price) VALUES (%s, %s, %s, %s) RETURNING name, description, category_id, price;"""
             params = [name, description, category_id, price]
             try:
                 with connect() as conn:
                     cursor = conn.cursor(cursor_factory=DictCursor)
                     cursor.execute(query, params)
                     result = cursor.fetchone()
-                    if result:
-                        current_app.logger.debug(
-                            f"successfully inserted into {self.table_name}"
-                        )
-                        return (
-                            jsonify(
-                                {
-                                    "msg": "inserted data",
-                                    "id": result["id"],
-                                    "name": name,
-                                    "description": description,
-                                    "price": price,
-                                    "category": (
-                                        category["name"]
-                                        if category is not None
-                                        else None
-                                    ),
-                                }
-                            ),
-                            201,
-                        )
-                    else:
-                        return jsonify({"error": "conflict"}), 409
-
+                    if result is None:
+                        return jsonify({"error": "found nothing"}), 404
+                    conn.commit()
+                    return (
+                        jsonify(
+                            {
+                                "msg": "entry successfull",
+                                "parent category": category["name"],
+                                "name": name,
+                                "description": description,
+                                "price": price,
+                                "category id": category_id,
+                            }
+                        ),
+                        201,
+                    )
             except Exception as ex:
-                current_app.logger.debug("don't know what happened check the response")
                 return jsonify({"error": str(ex)}), 500
 
     def register_blueprint(self, app):
