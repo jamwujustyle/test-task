@@ -2,6 +2,7 @@ from db import connect
 from flask import Flask
 from routes.user import UserManagement
 from routes.categories import CategoryManagement
+from routes.products import ProductManagement
 from flask_mail import Mail
 from email_verification.verification import handle_email_verification
 from dotenv import load_dotenv
@@ -25,7 +26,9 @@ mail = Mail(app)
 
 user_management = UserManagement()
 category_management = CategoryManagement()
+product_management = ProductManagement()
 app.register_blueprint(user_management.blueprint)
 app.register_blueprint(category_management.blueprint)
+app.register_blueprint(product_management.blueprint)
 if __name__ == "__main__":
     app.run(debug=True)

@@ -46,14 +46,14 @@ def select_from_table(table_name, **kwargs):
 
                 return result
     except (psycopg2.DatabaseError, Exception) as ex:
-        print(f"error retrieving data from table {table_name}: {ex}")
-        return None
+        current_app.logger.debug(f"Error fetching from {table_name}: {str(ex)}")
+        raise
 
 
-def insert_into_categories(table_name, **kwargs):
+def insert_into_table(table_name, **kwargs):
     """insert into categories table"""
     try:
-        query = """INSERT INTO categories (name, description, parent_category_id) 
+        query = f"""INSERT INTO {table_name} (name, description, parent_category_id) 
         VALUES (%s,%s,%s)
         ON CONFLICT (name) DO NOTHING
         RETURNING id;"""

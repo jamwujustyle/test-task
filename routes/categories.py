@@ -5,7 +5,7 @@ from psycopg2.extras import DictCursor
 from queries.db_queries import (
     select_from_table,
     insert_into_users,
-    insert_into_categories,
+    insert_into_table,
     delete_records_from_table,
 )
 
@@ -63,7 +63,7 @@ class CategoryManagement:
                 #         ),
                 #     )
                 #     conn.commit()
-                category_id = insert_into_categories(
+                category_id = insert_into_table(
                     "categories",
                     name=name,
                     description=description,
@@ -279,7 +279,7 @@ class CategoryManagement:
         def delete(id):
             claims = get_jwt()
             if claims.get("role") != "admin":
-                return jsonify({"error": "insuffisient permissions"}), 409
+                return jsonify({"error": "insuffisient permissions"}), 401
             try:
                 category_to_delete = select_from_table(self.table_name, id=id)
                 if category_to_delete:
