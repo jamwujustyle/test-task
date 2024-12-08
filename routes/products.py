@@ -85,5 +85,17 @@ class ProductManagement:
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
+        @self.blueprint.route("/products/get/<id>", methods=["GET"])
+        def get_by_id(id):
+            try:
+                product = select_from_table(self.table_name, id=id)
+                if product is not None:
+                    return jsonify({"product": product})
+                else:
+                    return jsonify({"error": "product not found"}), 404
+
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
