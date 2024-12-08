@@ -72,5 +72,18 @@ class ProductManagement:
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
+        @self.blueprint.route("/products/get", methods=["GET"])
+        def get_all_products():
+            query = f"""SELECT * FROM {self.table_name};"""
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(query)
+                    products = cursor.fetchall()
+                    if products is not None:
+                        return jsonify({"msg": products})
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
