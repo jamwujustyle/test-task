@@ -80,7 +80,9 @@ def delete_records_from_table(table_name, **kwargs):
     try:
         with connect() as conn:
             cursor = conn.cursor(cursor_factory=DictCursor)
-            cursor.execute(query, (kwargs))
+            cursor.execute(query, (kwargs["id"],))
             conn.commit()
+            return True
     except Exception as ex:
-        return jsonify({"error": str(ex)}), 500
+        current_app.logger.debug(f"error deleting records: {str(ex)}")
+        return False
