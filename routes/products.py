@@ -81,7 +81,23 @@ class ProductManagement:
                     cursor.execute(query)
                     products = cursor.fetchall()
                     if products is not None:
-                        return jsonify({"msg": products})
+
+                        result = [
+                            {
+                                "id": product["id"],
+                                "name": product["name"],
+                                "description": product["description"],
+                                "price": product["price"],
+                                "created at": product["created_at"],
+                                "updated at": product["updated_at"],
+                                "category id": product["category_id"],
+                            }
+                            for product in products
+                        ]
+                        return jsonify(result)
+                    else:
+                        return jsonify({"error": "no products found"}), 404
+
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
@@ -90,10 +106,50 @@ class ProductManagement:
             try:
                 product = select_from_table(self.table_name, id=id)
                 if product is not None:
-                    return jsonify({"product": product})
+                    return jsonify(
+                        {
+                            "id": product["id"],
+                            "name": product["name"],
+                            "description": product["description"],
+                            "price": product["price"],
+                            "created at": product["created_at"],
+                            "updated at": product["updated_at"],
+                            "category id": product["category_id"],
+                        }
+                    )
                 else:
                     return jsonify({"error": "product not found"}), 404
 
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/products/put", methods=["PUT"])
+        @jwt_required()
+        def put(id):
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "empty request body"}), 400
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"error": "insufficient permissions"}), 401
+            name = data.get("name")
+            description = data.get("description")
+            category_id = data.get("category_id")
+            price = data.get("price")
+            if not name or not price or not category_id:
+                return jsonify({"error": "missing required arguments"}), 400
+            params = [name, description, category_id, price]
+            query = f"""INSERT INTO {self.table_name} (name, description, category_id, price) VALUES (%s, %s, %s, %s)"""
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(query, params)
+                    result = cursor.fetchone()
+                    if result is not None:
+                        return jsonify({"product": result}), 201
+                    else:
+                        return jsonify({"error", "failed putting products"}), 400
+                    conn.commit()
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
