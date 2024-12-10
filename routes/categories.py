@@ -284,7 +284,7 @@ class CategoryManagement:
                 category_to_delete = select_from_table(self.table_name, id=id)
                 if category_to_delete:
                     current_app.logger.debug(
-                        f"fetched the category with id: {category_to_delete.get("id")}"
+                        f"fetched the category with id: {category_to_delete.get('id')}"
                     )
                 else:
                     current_app.logger.debug("category does not exists")

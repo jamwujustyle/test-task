@@ -123,7 +123,7 @@ class ProductManagement:
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
-        @self.blueprint.route("/products/put", methods=["PUT"])
+        @self.blueprint.route("/products/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
             data = request.get_json()
@@ -136,20 +136,47 @@ class ProductManagement:
             description = data.get("description")
             category_id = data.get("category_id")
             price = data.get("price")
+            updated_at = data.get("updated_at")
             if not name or not price or not category_id:
                 return jsonify({"error": "missing required arguments"}), 400
-            params = [name, description, category_id, price]
-            query = f"""INSERT INTO {self.table_name} (name, description, category_id, price) VALUES (%s, %s, %s, %s)"""
+
+            query = "UPDATE products SET "
+            update_fields = []
+            params = []
+            if name:
+                update_fields.append("name = %s")
+                params.append(name)
+            if description is not None:
+                update_fields.append("description = %s")
+                params.append(description)
+            else:
+                update_fields.append("description = NULL")
+            if category_id:
+                update_fields.append("category_id = %s")
+                params.append(category_id)
+            if price:
+                update_fields.append("price = %s")
+                params.append(price)
+            if updated_at is not None:
+                update_fields.append("updated_at = %s")
+                params.append(updated_at)
+            else:
+                update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            query += ", ".join(update_fields) + " WHERE id = %s"
+            params.append(id)
             try:
                 with connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(query, params)
-                    result = cursor.fetchone()
-                    if result is not None:
-                        return jsonify({"product": result}), 201
+                    if cursor.rowcount > 0:
+                        conn.commit()
+                        return jsonify({"message": "product updated successfully"}), 200
                     else:
-                        return jsonify({"error", "failed putting products"}), 400
-                    conn.commit()
+                        return (
+                            jsonify({"error", "product not found or no changes made"}),
+                            404,
+                        )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
