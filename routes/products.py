@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, request, jsonify
 from flask_jwt_extended import get_jwt, jwt_required
 from db import connect
 from psycopg2.extras import DictCursor
-from queries.db_queries import select_from_table
+from queries.db_queries import select_from_table, delete_records_from_table
 
 
 class ProductManagement:
@@ -259,7 +259,18 @@ class ProductManagement:
         @self.blueprint.route("/products/delete/<id>", methods=["DELETE"])
         @jwt_required()
         def delete(id):
-            pass
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"error": "insufficient permissions"}), 401
+            product_to_delete = select_from_table(self.table_name, id=id)
+            try:
+                result = delete_records_from_table(self.table_name, id=id)
+                if result is not None:
+                    return jsonify({"deleted data": product_to_delete}), 200
+                else:
+                    return jsonify({"error": "could not find or delete product"}), 200
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
