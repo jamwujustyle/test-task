@@ -171,7 +171,16 @@ class ProductManagement:
                     cursor.execute(query, params)
                     if cursor.rowcount > 0:
                         conn.commit()
-                        return jsonify({"message": "product updated successfully"}), 200
+                        new_data = select_from_table(self.table_name, id=id)
+                        return (
+                            jsonify(
+                                {
+                                    "message": "product updated successfully",
+                                    "new data": new_data,
+                                }
+                            ),
+                            200,
+                        )
                     else:
                         return (
                             jsonify({"error", "product not found or no changes made"}),
@@ -179,6 +188,78 @@ class ProductManagement:
                         )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/products/patch/<id>", methods=["PATCH"])
+        @jwt_required()
+        def patch(id):
+            claims = get_jwt()
+            if claims.get("role") != "admin":
+                return jsonify({"error": "insufficient permissions"}), 401
+
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "request body is empty"}), 400
+            name = data.get("name")
+            description = data.get("description")
+            category_id = data.get("category_id")
+            updated_at = data.get("updated_at")
+            price = data.get("price")
+
+            query = f"UPDATE {self.table_name} SET "
+            update_fields = []
+            params = []
+
+            if name:
+                update_fields.append("name = %s")
+                params.append(name)
+            if description:
+                update_fields.append("description = %s")
+                params.append(description)
+            if category_id:
+                update_fields.append("category_id = %s")
+                params.append(category_id)
+            if updated_at is not None:
+                update_fields.append("updated_at = %s")
+                params.append(updated_at)
+            else:
+                updated_at.append("updated_at = NULL")
+            if price:
+                update_fields.append("price = %s")
+                params.append(price)
+            query += (", ").join(update_fields) + " WHERE id = %s"
+            params.append(id)
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(query, params)
+                    if cursor.rowcount > 0:
+
+                        conn.commit()
+                        return (
+                            jsonify(
+                                {
+                                    "msg": "product updated successfully",
+                                    "name": name,
+                                    "description": description,
+                                    "category id": category_id,
+                                    "price": price,
+                                    "updated at": updated_at,
+                                }
+                            ),
+                            200,
+                        )
+                    else:
+                        return (
+                            jsonify({"error": "product could not be updated or found"}),
+                            404,
+                        )
+            except Exception as ex:
+                return jsonify({"error": str(ex)}), 500
+
+        @self.blueprint.route("/products/delete/<id>", methods=["DELETE"])
+        @jwt_required()
+        def delete(id):
+            pass
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
