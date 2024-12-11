@@ -37,14 +37,18 @@ def select_from_table(table_name, **kwargs):
                 if "email" in kwargs:
                     query = f"SELECT * FROM {table_name} WHERE email = %s;"
                     cur.execute(query, (kwargs["email"],))
+                    result = cur.fetchone()
                 elif "id" in kwargs:
-                    query = f"SELECT * FROM {table_name} WHERE id = %s"
+                    query = f"SELECT * FROM {table_name} WHERE id = %s;"
                     cur.execute(query, (kwargs["id"],))
-                else:
-                    return None
-                result = cur.fetchone()
+                    result = cur.fetchone()
 
-                return result
+                else:
+                    query = f"SELECT * FROM {table_name};"
+                    cur.execute(query)
+                    result = cur.fetchall()
+
+                return dict(result) if result else None
     except (psycopg2.DatabaseError, Exception) as ex:
         current_app.logger.debug(f"Error fetching from {table_name}: {str(ex)}")
         raise

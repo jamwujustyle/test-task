@@ -6,7 +6,6 @@ from queries.db_queries import select_from_table, delete_records_from_table
 
 
 class ProductManagement:
-    ############### INIT ##############
     def __init__(self, app=None):
         self.blueprint = Blueprint("product_management", __name__)
         self.table_name = "products"
@@ -266,11 +265,28 @@ class ProductManagement:
             try:
                 result = delete_records_from_table(self.table_name, id=id)
                 if result is not None:
+                    reset_id_sequence()
                     return jsonify({"deleted data": product_to_delete}), 200
                 else:
                     return jsonify({"error": "could not find or delete product"}), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
+
+        def reset_id_sequence():
+            query = f"""
+                SELECT setval(
+                            pg_get_serial_sequence('{self.table_name}', 'id'),
+                            (SELECT MAX(id) FROM {self.table_name}),
+                            false
+                            );
+                            """
+            try:
+                with connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(query)
+                    conn.commit()
+            except Exception as ex:
+                current_app.logger.debug(f"error resetting id sequence {str(ex)}")
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
