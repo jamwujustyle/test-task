@@ -276,7 +276,7 @@ class ProductManagement:
             query = f"""
                 SELECT setval(
                             pg_get_serial_sequence('{self.table_name}', 'id'),
-                            (SELECT MAX(id) FROM {self.table_name}),
+                            (SELECT MIN(id) FROM {self.table_name}),
                             false
                             );
                             """

@@ -306,17 +306,19 @@ class OrderManagement:
             query = f"""
                 SELECT setval(
                             pg_get_serial_sequence('{self.table_name}', 'id'),
-                            (SELECT MAX(id) FROM {self.table_name}),
+                            COALESCE((SELECT MIN(id) FROM {self.table_name}), 1),
                             false
                             );
-                            """
+                """
             try:
                 with connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(query)
                     conn.commit()
+                    return "sequence reset successfully"
             except Exception as ex:
                 current_app.logger.debug(f"error resetting id sequence {str(ex)}")
+                return None
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
