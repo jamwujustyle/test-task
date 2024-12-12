@@ -1,6 +1,7 @@
 import random
 import string
-from flask import jsonify
+from flask import jsonify, abort
+from flask_jwt_extended import get_jwt
 
 
 def destructuring_utility(data):
@@ -28,3 +29,15 @@ def append_update_field(fields, params, field_name, value):
         params.append(value)
     else:
         fields.append(f"{field_name} = NULL")
+
+
+def append_for_patch(fields, params, field_name, value):
+    if value is not None:
+        fields.append(f"{field_name} = %s")
+        params.append(value)
+
+
+def check_for_admin():
+    claims = get_jwt()
+    if claims.get("role") != "admin":
+        abort(401, description="insufficient permissions")
