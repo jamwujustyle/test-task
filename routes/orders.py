@@ -77,8 +77,14 @@ class OrderManagement:
             if claims.get("role") != "admin":
                 return jsonify({"error": "insufficient permissions"}), 401
             try:
-                result = select_from_table(self.table_name)
-                return destructuring_utility(result)
+                query = f"SELECT * FROM {self.table_name}"
+                with connect() as conn:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor.execute(query)
+                    orders = cursor.fetchall()
+                    if not orders:
+                        return jsonify({"error": "no products to fetch"}), 404
+                    return jsonify([dict(order) for order in orders]), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
