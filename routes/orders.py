@@ -23,35 +23,50 @@ class OrderManagement:
             if not claims:
                 return jsonify({"error": "could not authenticate"}), 401
             user_id = data.get("user_id")
-            order_date = data.get("order_date")
             status = data.get("status")
             shipping_address = data.get("shipping_address")
-            billing_address = data.get("billing_address")
             payment_method = data.get("payment_method")
             payment_status = data.get("payment_status")
             shipping_status = data.get("shipping_status")
             tracking_number = generate_tracking_number()
+            products = data.get("products")
             if any(not value for value in [user_id, shipping_address]):
                 return jsonify({"error": "missing required arguments"}), 400
-            query = f"INSERT INTO {self.table_name} (user_id, order_date, status, shipping_address, billing_address, payment_method, payment_status, shipping_status, tracking_number) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;"
+
+            query = f"""INSERT INTO {self.table_name} 
+            (user_id, status, shipping_address, payment_method, payment_status, shipping_status, tracking_number) VALUES (%s, %s, %s, %s, %s, %s, %s ) RETURNING *;"""
             params = [
                 user_id,
-                order_date,
                 status,
                 shipping_address,
-                billing_address,
                 payment_method,
                 payment_status,
                 shipping_status,
                 tracking_number,
             ]
+
             try:
                 with connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(query, params)
-                    result = cursor.fetchone()
-                    if result is not None:
-                        return jsonify({"inserted data": params}), 201
+                    order_id = cursor.fetchone()[0]
+                    for product in products:
+                        product_id = product.get("product_id")
+                        quantity = product.get("quantity")
+                        price = product.get("price")
+
+                        cursor.execute(
+                            """INSERT INTO order_items (order_id, product_id, quantity, price)
+                        VALUES (%s, %s, %s, %s) ON CONFLICT (order_id, product_id) DO UPDATE SET quantity = order_items.quantity + 1;""",
+                            (order_id, product_id, quantity, price),
+                        )
+                    conn.commit()
+                    return (
+                        jsonify(
+                            {"msg": "order created successfully", "order_id": order_id}
+                        ),
+                        201,
+                    )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

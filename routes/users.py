@@ -67,8 +67,8 @@ class UserManagement:
             if not user:
                 return jsonify({"error": "user with that email does not exist"}), 404
             access_token = create_access_token(
-                identity=user[2],
-                additional_claims={"role": user[4]},
+                identity=user["email"],
+                additional_claims={"role": user["role"]},
                 expires_delta=timedelta(hours=12),
             )
             return jsonify({"access token": access_token}), 201
