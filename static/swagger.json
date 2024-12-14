@@ -279,6 +279,31 @@
         }
       ]
     }
+  },
+  "/categories/get/{id}":{
+    "get": {
+      "tags": ["categories"],
+      "summary": "get category by id",
+      "description": "fetches category at the given id",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "type": "integer"
+        }
+      ],
+      "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "200": {"description": "returned category at the given id"},
+            "404": {"description": "category at the given id not found"}
+          }
+        ]
+    }
   }
   },
   

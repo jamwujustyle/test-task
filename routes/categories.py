@@ -75,10 +75,8 @@ class CategoryManagement:
 
         @self.blueprint.route("/categories/get/<id>", methods=["GET"])
         def get_category_by_id(id):
-
             try:
-                converted_id = int(id) if id is not None else None
-                category = select_from_table(self.table_name, id=converted_id)
+                category = select_from_table(self.table_name, id=id)
                 if category:
                     return (
                         jsonify(
