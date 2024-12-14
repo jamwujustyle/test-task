@@ -1,14 +1,13 @@
 from flask import Blueprint, jsonify, request, current_app
 from db import connect
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required
 from psycopg2.extras import DictCursor
 from queries.db_queries import (
     select_from_table,
-    insert_into_users,
     insert_into_table,
     delete_records_from_table,
 )
-from routes.util.utils import check_for_admin
+from routes.util.utils import check_for_admin, append_update_field, reset_sequence_id
 
 
 class CategoryManagement:
@@ -100,6 +99,7 @@ class CategoryManagement:
         @self.blueprint.route("/categories/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
+            check_for_admin()
             data = request.get_json()
             if not data:
                 return jsonify({"error": "invalid json format"})
@@ -108,47 +108,57 @@ class CategoryManagement:
             parent_category_id = data.get("parent_category_id")
             updated_at = data.get("updated_at")
 
-            converted_id = int(id) if id is not None else None
-            if not name and not description:
-                current_app.logger.debug("no data is provided")
-                return jsonify({"error": "missing required arguments"}), 422
+            if any(not value for value in [name, parent_category_id]):
+                return (
+                    jsonify(
+                        {
+                            "error": "missing required arguments (name, parent_category_id)"
+                        }
+                    ),
+                    400,
+                )
+
             query = "UPDATE categories SET "
             update_fields = []
             params = []
-            if name:
-                update_fields.append("name = %s")
-                params.append(name)
-            if description:
-                update_fields.append("description = %s")
-                params.append(description)
-            query += " ,".join(update_fields) + " WHERE id = %s"
+            append_update_field(update_fields, params, "name", name)
+            append_update_field(update_fields, params, "description", description)
+            append_update_field(
+                update_fields, params, "parent_category_id", parent_category_id
+            )
+            append_update_field(update_fields, params, "updated_at", None)
+            if not update_fields:
+                return jsonify({"error": "no fields to update"}), 400
+
+            query += ", ".join(update_fields) + " WHERE id = %s"
             params.append(id)
 
             try:
                 with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(query, tuple(params))
+                    cursor = conn.cursor()
+                    cursor.execute(query, params)
                     if cursor.rowcount == 0:
                         return jsonify({"error": "insertion into table failed"}), 400
-                    new_data = select_from_table(self.table_name, id=converted_id)
-                    current_app.logger.debug(
-                        f"new data: {new_data}, id passed: {id}, type of id {type(id)}"
-                    )
                     conn.commit()
+                    cursor.execute(
+                        f"select updated_at from {self.table_name} where id = %s", (id,)
+                    )
+                    updated_at = cursor.fetchone()
                     return jsonify(
                         {
-                            "msg": "user updated",
+                            "msg": "category updated",
                             "name": name,
                             "description": description,
                             "updated_at": updated_at,
                         }
                     )
             except Exception as ex:
-                return jsonify({"error": str(ex)}), 500
+                return jsonify({"outer error": str(ex)}), 500
 
         @self.blueprint.route("/categories/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
+            check_for_admin()
             data = request.get_json()
             name = data.get("name")
             description = data.get("description")
@@ -158,12 +168,6 @@ class CategoryManagement:
                     "missing required arguments. at least 1 fields is neede to update"
                 )
                 return jsonify({"error": "missing arguments"}), 400
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                current_app.logger.debug(
-                    "insuffisient permissions. role 'admin' required"
-                )
-                return jsonify({"error": "access denied"}), 409
             update_fields = []
             params = []
             query = f"UPDATE {self.table_name} SET "
@@ -233,9 +237,7 @@ class CategoryManagement:
         @self.blueprint.route("/categories/delete/<id>", methods=["DELETE"])
         @jwt_required()
         def delete(id):
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insuffisient permissions"}), 401
+            check_for_admin()
             try:
                 category_to_delete = select_from_table(self.table_name, id=id)
                 if category_to_delete:

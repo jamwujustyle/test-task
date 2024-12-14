@@ -26,7 +26,9 @@ def generate_tracking_number(prefix="TRK", length=10):
 
 
 def append_update_field(fields, params, field_name, value):
-    if value is not None:
+    if field_name == "updated_at" and value is None:
+        fields.append(f"{field_name} = CURRENT_TIMESTAMP")
+    elif value is not None:
         fields.append(f"{field_name} = %s")
         params.append(value)
     else:

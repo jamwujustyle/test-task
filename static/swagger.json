@@ -289,7 +289,8 @@
         {
           "in": "path",
           "name": "id",
-          "type": "integer"
+          "type": "integer",
+          "required": true
         }
       ],
       "security": [
@@ -300,6 +301,44 @@
         "responses": [
           {
             "200": {"description": "returned category at the given id"},
+            "404": {"description": "category at the given id not found"}
+          }
+        ]
+    }
+  },
+  "/categories/put/{id}":{
+    "put": {
+      "tags": ["categories"],
+      "summary": "post category",
+      "description": "updates at the given id, missing fields get reset",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "parent_category_id": {"type": "integer"}
+            }
+          }
+        }
+      ],
+      "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "201": {"description": "updated category at the given id"},
             "404": {"description": "category at the given id not found"}
           }
         ]
