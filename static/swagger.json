@@ -161,9 +161,45 @@
         }
       }
     },
-    "users/patch/{id}": {
+    "/users/patch/{id}": {
       "patch": {
-        "tags": ["users"]
+        "tags": ["users"],
+        "summary": "updated user by id (PATCH)",
+        "description": "updates user by id while preserving existing data for missing fields",
+        "parameters": [
+          {
+            "in": "path",
+          "name": "id",
+          "required": true,
+         "type": "integer",
+         "description": "user id to update"
+         },
+         {
+          "in": "body", 
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "username": {"type": "string"},
+              "email": {"type": "string"},
+              "password": {"type": "string"},
+              "role": {"type": "string"}
+            }
+          }
+         }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "200": {"description": "user data has been updated"},
+            "401": {"description": "access denied"},
+            "404": {"description": "user at the given id is not found"}
+          }
+        ]
       }
     },
     

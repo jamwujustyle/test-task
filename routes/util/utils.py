@@ -42,7 +42,7 @@ def append_for_patch(fields, params, field_name, value):
 def check_for_admin():
     claims = get_jwt()
     if claims.get("role") != "admin":
-        abort(401, description="insufficient permissions")
+        return jsonify({"error": "insufficient permissions"}), 401
 
 
 def reset_sequence_id(table_name):
@@ -70,6 +70,5 @@ def reset_sequence_id(table_name):
 def email_validation(email):
     email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
     if not re.match(email_regex, email):
-        return None
-
+        return jsonify({"error": "invalid email format"}), 400
     return True

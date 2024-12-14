@@ -109,9 +109,6 @@ class UserManagement:
         @jwt_required()
         def get_all_users():
             """fetches all users from table "users" """
-            claims = get_jwt()
-            current_app.logger.debug(f"claims: {claims}")
-            check_for_admin()
             query = "SELECT * FROM users;"
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
@@ -139,7 +136,6 @@ class UserManagement:
             """get user by id"""
 
             query = "SELECT * FROM users WHERE id = %s"
-            check_for_admin()
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
                 cursor.execute(query, (id,))
@@ -173,6 +169,9 @@ class UserManagement:
             password = data.get("password")
 
             check_for_admin()
+            if email_validation(email) is not True:
+                return email_validation(email)
+
             if any(not value for value in [email, password]):
                 return jsonify({"error": "missing required arguments"}), 400
             hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
@@ -206,43 +205,38 @@ class UserManagement:
         @self.blueprint.route("/users/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
-
+            """UPDATES USER PARTIALLY"""
+            check_for_admin()
             try:
                 id = int(id)
             except ValueError as ve:
                 return jsonify({"err": "value error"}), 400
             current_app.logger.debug(f"id is: {id} and the type is: {type(id)}")
-            """UPDATES USER PARTIALLY"""
             data = request.get_json()
             if not data:
                 return jsonify({"error": "invalid request"}), 400
             username = data.get("username")
+            email = data.get("email")
+            if email_validation(email) is not True:
+                return email_validation(email)
             role = data.get("role")
-            if username and role:
-                current_app.logger.debug("request is taken")
-
-            if not role or not username:
-                return jsonify({"error": "missing required arguments"}), 400
-
-            claims = get_jwt()
-            if claims:
-                current_app.logger.debug("claims are taken")
-
-            if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 401
+            password = data.get("password")
+            hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
             query = "UPDATE users SET "
 
             update_fields = []
             params = []
 
-            if username:
-                update_fields.append("username = %s")
-                params.append(username)
-            if role:
-                update_fields.append("role = %s")
-                params.append(role)
+            append_update_field(update_fields, params, "username", username)
+            append_update_field(
+                update_fields, params, "password", hashed_password.decode("utf-8")
+            )
+            append_update_field(update_fields, params, "role", role)
+            append_update_field(update_fields, params, "email", email)
             query += ", ".join(update_fields) + " WHERE id = %s"
             params.append(id)
+            if not update_fields:
+                return jsonify({"error": "no fields to update"}), 400
             try:
                 with connect() as conn:
                     cursor = conn.cursor(cursor_factory=DictCursor)
@@ -250,16 +244,14 @@ class UserManagement:
 
                     if cursor.rowcount == 0:
                         return jsonify({"error": "empty request"}), 422
-                    new_data = select_from_table("users", id=id)
-                    current_app.logger.debug(f"new data: {new_data}")
-                    current_app.logger.debug(f"id passed: {id} Type: {type(id)}")
                     conn.commit()
                     return (
                         jsonify(
                             {
                                 "msg": "User updated",
-                                "username": new_data["username"],
-                                "role": new_data["role"],
+                                "username": username,
+                                "email": email,
+                                "role": role,
                             }
                         ),
                         200,
