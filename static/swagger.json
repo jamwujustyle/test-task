@@ -203,9 +203,30 @@
       }
     },
     
-    "users/delete/{id}": {
+    "/users/delete/{id}": {
       "delete": {
-        "tags": ["users"]
+        "tags": ["users"],
+        "summary": "delete user",
+        "description": "deletes user at the given id",
+        "parameters": [
+          {
+            "in": "id",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "200": {"description": "deleted user successfully"},
+            "404": {"description": "user at the given id is not found"}
+          }
+        ]
       }
     }
   },

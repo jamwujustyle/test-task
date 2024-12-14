@@ -1,7 +1,11 @@
 from flask import Blueprint, jsonify, request, current_app
 import bcrypt
 from datetime import timedelta
-from queries.db_queries import insert_into_users, select_from_table
+from queries.db_queries import (
+    insert_into_users,
+    select_from_table,
+    delete_records_from_table,
+)
 from db import connect
 from psycopg2.extras import DictCursor
 
@@ -264,25 +268,16 @@ class UserManagement:
         @jwt_required()
         def delete(id):
             """deletes by user id"""
-            claims = get_jwt()
-            if claims:
-                current_app.logger.debug("claims are taken")
-            if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 401
+            check_for_admin()
             user = select_from_table("users", id=id)
             if not user:
                 return jsonify({"error": "user not found"}), 404
             query = "DELETE from users WHERE id = %s"
             current_app.logger.debug(f"type of user {type(user)}")
             try:
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(
-                        query,
-                        (id,),
-                    )
-                    conn.commit()
-                    return jsonify({"deleted": user}), 201
+                result = delete_records_from_table("users", id=id)
+                if result is True:
+                    return jsonify({"deleted": user}), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
