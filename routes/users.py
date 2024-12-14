@@ -21,6 +21,7 @@ from routes.util.utils import (
     check_for_admin,
     append_update_field,
     reset_sequence_id,
+    append_for_patch,
 )
 from collections import OrderedDict
 
@@ -216,28 +217,30 @@ class UserManagement:
                 id = int(id)
             except ValueError as ve:
                 return jsonify({"err": "value error"}), 400
-            current_app.logger.debug(f"id is: {id} and the type is: {type(id)}")
             data = request.get_json()
             if not data:
-                return jsonify({"error": "invalid request"}), 400
+                return jsonify({"error": "empty request body"}), 400
             username = data.get("username")
             email = data.get("email")
-            if email_validation(email) is not True:
+            if email is not None and email_validation(email) is not True:
                 return email_validation(email)
             role = data.get("role")
             password = data.get("password")
-            hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-            query = "UPDATE users SET "
-
+            if password is not None:
+                hashed_password = bcrypt.hashpw(
+                    password.encode("utf-8"), bcrypt.gensalt()
+                )
+                append_for_patch(
+                    update_fields, params, "password", hashed_password.decode("utf-8")
+                )
+            query = f"UPDATE {self.table_name} SET "
             update_fields = []
             params = []
 
-            append_update_field(update_fields, params, "username", username)
-            append_update_field(
-                update_fields, params, "password", hashed_password.decode("utf-8")
-            )
-            append_update_field(update_fields, params, "role", role)
-            append_update_field(update_fields, params, "email", email)
+            append_for_patch(update_fields, params, "username", username)
+
+            append_for_patch(update_fields, params, "role", role)
+            append_for_patch(update_fields, params, "email", email)
             query += ", ".join(update_fields) + " WHERE id = %s"
             params.append(id)
             if not update_fields:
@@ -246,6 +249,7 @@ class UserManagement:
                 with connect() as conn:
                     cursor = conn.cursor(cursor_factory=DictCursor)
                     cursor.execute(query, tuple(params))
+                    updated_user = select_from_table(self.table_name, id=id)
 
                     if cursor.rowcount == 0:
                         return jsonify({"error": "empty request"}), 422
@@ -253,10 +257,7 @@ class UserManagement:
                     return (
                         jsonify(
                             {
-                                "msg": "User updated",
-                                "username": username,
-                                "email": email,
-                                "role": role,
+                                "user updated": updated_user,
                             }
                         ),
                         200,
