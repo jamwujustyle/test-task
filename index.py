@@ -10,20 +10,23 @@ from email_verification.verification import handle_email_verification
 from dotenv import load_dotenv
 import os
 from flask_jwt_extended import JWTManager
-
+from swagger.swagger import setup_swagger
+from flask_cors import CORS
 
 load_dotenv()
 app = Flask(__name__)
+CORS(app)
 
 app.config["SECRET_KEY"] = "d7d562c801"
 # app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-# app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+# app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")``
 # app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS")
 # app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
 # app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 # app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
 
 jwt = JWTManager(app)
+setup_swagger(app)
 mail = Mail(app)
 
 

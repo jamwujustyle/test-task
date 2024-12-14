@@ -3,6 +3,7 @@ import string
 from flask import jsonify, abort
 from flask_jwt_extended import get_jwt
 from db import connect
+import re
 
 
 def destructuring_utility(data):
@@ -64,3 +65,11 @@ def reset_sequence_id(table_name):
             return f"no changes made to serial sequence for {table_name}"
     except Exception as ex:
         abort(400, description=f"error resetting serial sequence: {str(ex)}")
+
+
+def email_validation(email):
+    email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+    if not re.match(email_regex, email):
+        return None
+
+    return True

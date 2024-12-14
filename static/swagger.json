@@ -1,0 +1,184 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "User Management API",
+    "description": "API for user registration, login, profile management, and administrative actions."
+  },
+  "host": "localhost:5000",
+  "basePath": "/",
+  "schemes": ["http"],
+  "paths": {
+    "/users/register": {
+      "post": {
+        "tags": ["users"],
+        "summary": "Register a new user",
+        "description": "Registers a new user with the provided username, email, and password.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": { "type": "string" },
+                "email": { "type": "string" },
+                "password": { "type": "string" },
+                "role": { "type": "string", "default": "user" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "User registered successfully" },
+          "400": { "description": "Invalid data or user already exists" },
+          "500": { "description": "Error inserting into database" }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "tags": ["users"],
+        "summary": "User login",
+        "description": "Logs in a user and returns an access token.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": { "type": "string" },
+                "password": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Access token returned" },
+          "403": { "description": "Bad request or missing email/password" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get current user",
+        "description": "Returns the information of the current logged-in user.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": { "description": "User data returned" },
+          "400": { "description": "User ID not found in token" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/users/get": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get all users",
+        "description": "Fetches all users from the database (admin access required).",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": { "description": "List of users returned" },
+          "401": { "description": "Access denied" }
+        }
+      }
+    },
+    "/users/get/{id}": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get user by ID",
+        "description": "Fetches a user by their ID (admin access required).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the user"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": { "description": "User data returned" },
+          "401": { "description": "Access denied" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/users/put/{id}": {
+      "put": {
+        "tags": ["users"],
+        "summary": "update user by id (PUT)",
+        "description": "Updates user by id. fields with no provided info will be lost",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer",
+            "description": "id of the user"
+          },
+           {
+              "in": "body",
+              "name": "body",
+              "schema": {
+              "type": "object",
+              "properties": {
+                "username": {"type": "string"},
+                "email": {"type": "string"},
+                "password": {"type": "string"},
+                "role": {"type": "string"}
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {"description": "user data has been updated"},
+          "401": {"description": "access denied"},
+          "404": {"description": "user at the given id is not found"}
+        }
+      }
+    },
+    "users/patch/{id}": {
+      "patch": {
+        "tags": ["users"]
+      }
+    },
+    
+    "users/delete/{id}": {
+      "delete": {
+        "tags": ["users"]
+      }
+    }
+  },
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'"
+    }
+  }
+}

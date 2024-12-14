@@ -4,14 +4,21 @@ from datetime import timedelta
 from queries.db_queries import insert_into_users, select_from_table
 from db import connect
 from psycopg2.extras import DictCursor
-from email_verification.verification import handle_email_verification
+
+# from email_verification.verification import handle_email_verification
 from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
     jwt_required,
     get_jwt,
 )
-
+from routes.util.utils import (
+    email_validation,
+    check_for_admin,
+    append_update_field,
+    reset_sequence_id,
+)
+from collections import OrderedDict
 
 SECRET_KEY = "24e2b6bb0774463e890d1ad7d562c801"
 
@@ -32,9 +39,11 @@ class UserManagement:
 
             if not data:
                 return (jsonify({"msg": "invalid data"}), 400)
-
             username = data.get("username")
             email = data.get("email")
+            email_check = email_validation(email)
+            if email_check is None:
+                return jsonify({"error": "failed email check"}), 400
             password = data.get("password")
             role = data.get("role", "user")
 
@@ -71,27 +80,14 @@ class UserManagement:
                 additional_claims={"role": user["role"]},
                 expires_delta=timedelta(hours=12),
             )
-            return jsonify({"access token": access_token}), 201
+            return jsonify({"access token": f"Bearer {access_token}"}), 201
 
         @self.blueprint.route("/users/verify", methods=["POST"])
-
-        #############################   TODO
-        # def verify():
-        #     data = request.get_json()
-        #     email = data.get("email")
-        #     if email != "Unknown" and select_from_table("users", email=email):
-        #         handle_email_verification(email)
-        #         return jsonify({"msg": "found the user"})
-        #     else:
-        #         return jsonify({"msg": "user not found"}), 404
-
         @self.blueprint.route("/users/me", methods=["GET"])
         @jwt_required()
         def get_current_user():
-            data = request.get_json()
-            email = data.get("email")
-            id = get_jwt_identity()
-            if not id:
+            email = get_jwt_identity()
+            if not email:
                 return jsonify({"msg": "user id not found in token "}), 400
             user = select_from_table("users", email=email)
 
@@ -99,12 +95,14 @@ class UserManagement:
                 return jsonify({"msg": "user not found"}), 404
 
             return jsonify(
-                {
-                    "msg": "access granted",
-                    "id": id,
-                    "username": user[1],
-                    "email": user[2],
-                }
+                OrderedDict(
+                    [
+                        ("id", user["id"]),
+                        ("username", user["username"]),
+                        ("email", user["email"]),
+                        ("role", user["role"]),
+                    ]
+                )
             )
 
         @self.blueprint.route("/users/get", methods=["GET"])
@@ -113,8 +111,7 @@ class UserManagement:
             """fetches all users from table "users" """
             claims = get_jwt()
             current_app.logger.debug(f"claims: {claims}")
-            if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 401
+            check_for_admin()
             query = "SELECT * FROM users;"
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
@@ -140,11 +137,9 @@ class UserManagement:
         @jwt_required()
         def get_user_by_id(id):
             """get user by id"""
-            claims = get_jwt()
-            current_app.logger.debug(f"claims: {claims}")
+
             query = "SELECT * FROM users WHERE id = %s"
-            if claims.get("role") != "admin":
-                return jsonify({"error": "access denied"}), 401
+            check_for_admin()
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
                 cursor.execute(query, (id,))
@@ -170,26 +165,26 @@ class UserManagement:
             """ "update user by id"""
             data = request.get_json()
             if not data:
-                return jsonify({"error": "invalid data"}), 400
+                return jsonify({"error": "empty request body"}), 400
 
             username = data.get("username")
             role = data.get("role")
+            email = data.get("email")
+            password = data.get("password")
 
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"msg": "access denied"}), 401
-
-            if not username and not role:
+            check_for_admin()
+            if any(not value for value in [email, password]):
                 return jsonify({"error": "missing required arguments"}), 400
+            hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
             query = "UPDATE users SET "
             update_fields = []
             params = []
-            if username:
-                update_fields.append("username = %s")
-                params.append(username)
-            if role:
-                update_fields.append("role = %s")
-                params.append(role)
+            append_update_field(update_fields, params, "username", username)
+            append_update_field(update_fields, params, "role", role)
+            append_update_field(update_fields, params, "email", email)
+            append_update_field(
+                update_fields, params, "password", hashed_password.decode("utf-8")
+            )
             query += ", ".join(update_fields) + " WHERE id = %s"
             params.append(id)
 
