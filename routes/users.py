@@ -78,15 +78,23 @@ class UserManagement:
             if not data.get("email") or not data.get("password"):
                 return jsonify({"error": "missing email or password"}), 403
             email = data["email"]
+            entered_password = data["password"]
+
             user = select_from_table("users", email=email)
             if not user:
                 return jsonify({"error": "user with that email does not exist"}), 404
+            user_password = user.get("password")
             access_token = create_access_token(
                 identity=user["email"],
                 additional_claims={"role": user["role"]},
                 expires_delta=timedelta(hours=12),
             )
-            return jsonify({"access token": f"Bearer {access_token}"}), 201
+            if bcrypt.checkpw(
+                entered_password.encode("utf-8"), user_password.encode("utf-8")
+            ):
+                return jsonify({"access token": f"Bearer {access_token}"}), 201
+            else:
+                return jsonify({"error": "invalid password"}), 401
 
         @self.blueprint.route("/users/verify", methods=["POST"])
         @self.blueprint.route("/users/me", methods=["GET"])

@@ -261,6 +261,24 @@
               }
             ]
     }
+  },
+  "/categories/get": {
+    "get": {
+      "tags": ["categories"],
+      "summary": "get all categories", 
+      "description": "fetches all existing categories",
+      "security": [
+        {
+          "BearerAuth": []
+        }
+      ],
+      "responses": [
+        {
+          "200": {"description": "List of users returned"},
+          "401": {"description": "access denied"}
+        }
+      ]
+    }
   }
   },
   

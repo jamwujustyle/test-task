@@ -32,14 +32,6 @@ class CategoryManagement:
             parent_category_id = data.get("parent_category_id")
             if any(not value for value in [name, description, parent_category_id]):
                 return jsonify({"error": "missing required arguments"}), 400
-
-            try:
-                parent_category_id = (
-                    int(parent_category_id) if parent_category_id is not None else None
-                )
-            except ValueError:
-                return jsonify({"error": ValueError}), 400
-
             try:
                 category_id = insert_into_table(
                     "categories",
@@ -59,33 +51,25 @@ class CategoryManagement:
 
         @self.blueprint.route("/categories/get", methods=["GET"])
         def get_all_categories():
-            query = f"SELECT * FROM {self.table_name};"
             try:
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(query)
-                    categories = cursor.fetchall()
-                    if categories:
-                        categories_data = [
-                            {
-                                "id": category["id"],
-                                "name": category["name"],
-                                "description": category["description"],
-                                "parent_category_id": category["parent_category_id"],
-                                "created_at": category["created_at"],
-                                "updated_at": category["updated_at"],
-                            }
-                            for category in categories
-                        ]
-                        return jsonify({"categories": categories_data})
-                    else:
-                        return (
-                            jsonify(
-                                {"error": "error retrieving categories from table"}
-                            ),
-                            500,
-                        )
-
+                categories = select_from_table(self.table_name)
+                if categories:
+                    categories_data = [
+                        {
+                            "id": category["id"],
+                            "name": category["name"],
+                            "description": category["description"],
+                            "parent_category_id": category["parent_category_id"],
+                            "created_at": category["created_at"],
+                            "updated_at": category["updated_at"],
+                        }
+                        for category in categories
+                    ]
+                    return jsonify({"categories": categories_data})
+                return (
+                    jsonify({"error": "error retrieving categories from table"}),
+                    500,
+                )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

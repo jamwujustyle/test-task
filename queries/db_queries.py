@@ -47,6 +47,7 @@ def select_from_table(table_name, **kwargs):
                     query = f"SELECT * FROM {table_name};"
                     cur.execute(query)
                     result = cur.fetchall()
+                    return result
 
                 return dict(result) if result else None
     except (psycopg2.DatabaseError, Exception) as ex:
