@@ -1,8 +1,9 @@
 from flask import request, Blueprint, current_app, jsonify, abort
 from flask_jwt_extended import get_jwt, jwt_required
 from db import connect
-from routes.util.utils import check_for_admin
+from routes.util.utils import destructuring_utility, reset_sequence_id
 from psycopg2.extras import DictCursor
+from queries.db_queries import select_from_table, delete_records_from_table
 
 
 class CartManagement:
@@ -91,9 +92,32 @@ class CartManagement:
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
-        # @self.blueprint.route("/cart/delete/<id>", methods=["DELETE"])
-        # @jwt_required()
-        # def delete_by_id():
+        @self.blueprint.route("/cart/delete/<id>", methods=["DELETE"])
+        @jwt_required()
+        def delete_by_id(id):
+            claims = get_jwt()
+            if claims is None:
+                return jsonify({"error": "authorization failed"}), 401
+            try:
+                data_to_delete = select_from_table(self.table_name, id=id)
+                if data_to_delete is None:
+                    current_app.logger.debug(
+                        f"could not fetch result from table {self.table_name}, id: {id}"
+                    )
+                    return jsonify({"error": f"no record found with id {id}"}), 404
+                destructured_data, destructured_response = destructuring_utility(
+                    data_to_delete
+                )
+
+                result = delete_records_from_table(self.table_name, id=id)
+                if result is None:
+                    return jsonify({"error": "deletion failed"}), 400
+                reset_sequence_id(self.table_name)
+                return jsonify({"deleted data": destructured_data}), 200
+            except ValueError as ve:
+                return jsonify({"value error": str(ve)}), 500
+            except Exception as ex:
+                return jsonify({"unexpected error": str(ex)}), 500
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprrint(app))

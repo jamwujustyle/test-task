@@ -89,4 +89,4 @@ def delete_records_from_table(table_name, **kwargs):
             return True
     except Exception as ex:
         current_app.logger.debug(f"error deleting records: {str(ex)}")
-        return False
+        return None
