@@ -31,6 +31,7 @@ class UserManagement:
     #######################  INIT ROUTING  ########################
     def __init__(self, app=None):
         self.blueprint = Blueprint("user-management", __name__)
+        self.table_name = "users"
         if app is not None:
             self.register_blueprint(app)
 
@@ -269,15 +270,14 @@ class UserManagement:
         def delete(id):
             """deletes by user id"""
             check_for_admin()
-            user = select_from_table("users", id=id)
+            user = select_from_table(self.table_name, id=id)
             if not user:
                 return jsonify({"error": "user not found"}), 404
-            query = "DELETE from users WHERE id = %s"
-            current_app.logger.debug(f"type of user {type(user)}")
             try:
-                result = delete_records_from_table("users", id=id)
+                result = delete_records_from_table(self.table_name, id=id)
                 if result is True:
-                    return jsonify({"deleted": user}), 200
+                    reset_sequence_id(self.table_name)
+                    return jsonify({"deleted": user}), 201
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

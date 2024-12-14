@@ -8,6 +8,7 @@ from queries.db_queries import (
     insert_into_table,
     delete_records_from_table,
 )
+from routes.util.utils import check_for_admin
 
 
 class CategoryManagement:
@@ -22,47 +23,24 @@ class CategoryManagement:
         @self.blueprint.route("/categories/post", methods=["POST"])
         @jwt_required()
         def post():
+            check_for_admin()
             data = request.get_json()
             if not data:
-                current_app.logger.debug("invalid request")
                 return jsonify({"error": "bad request"}), 400
             name = data.get("name")
-            if not name:
-                current_app.logger.debug("missing name in request body")
-                return jsonify({"error": "missing required arguemnts"}), 400
             description = data.get("description")
-            if not description:
-                current_app.logger.debug("missing description field in request body")
-                return jsonify({"error": "missing required arguments"})
             parent_category_id = data.get("parent_category_id")
-            # if not parent_category_id:
-            #     current_app.logger.debug("missing parent id")
-            #     return jsonify({"error": "missing required arguments"}), 400
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                current_app.logger.debug("access denied: insufficient permissions")
-                return jsonify({"error": "access denied"}), 403
+            if any(not value for value in [name, description, parent_category_id]):
+                return jsonify({"error": "missing required arguments"}), 400
+
             try:
                 parent_category_id = (
                     int(parent_category_id) if parent_category_id is not None else None
                 )
             except ValueError:
                 return jsonify({"error": ValueError}), 400
-            # query = insert_into_categories = (
-            #     f"INSERT INTO {table_name} (name, description, parent_category_id) VALUES (%s, %s, %s) ON CONFLICT (name) DO NOTHING"
-            # )
+
             try:
-                # with connect() as conn:
-                #     cursor = conn.cursor(cursor_factory=DictCursor)
-                #     cursor.execute(
-                #         query,
-                #         (
-                #             name,
-                #             description,
-                #             parent_category_id,
-                #         ),
-                #     )
-                #     conn.commit()
                 category_id = insert_into_table(
                     "categories",
                     name=name,
@@ -70,14 +48,10 @@ class CategoryManagement:
                     parent_category_id=parent_category_id,
                 )
                 if category_id:
-                    current_app.logger.debug(
-                        f"successfully inserted into table {self.table_name} with id of {category_id}"
-                    )
+
                     return jsonify({"msg": "category has been created "}), 201
                 else:
-                    current_app.logger.debug(
-                        f"category with name {name} already exists"
-                    )
+
                     return jsonify({"error": "category name already exists"}), 409
             except Exception as ex:
                 current_app.logger.debug("error manipulating database")

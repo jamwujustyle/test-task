@@ -1,22 +1,25 @@
-version: 3.11.10
+version: "3.11"
 
 services:
   web:
     build: .
     ports: 
-    - "5000:5000"
+      - "5000:5000"
     volumes: 
-    - .:/project
+      - .:/project
     environment:
-    - FLASK_ENV=development
+      - FLASK_ENV=development
+    depends_on:
+      - db
 
-  db:
+  localhost:
     image: postgres:latest
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 0880
       POSTGRES_DB: test_task
     volumes:
-    - postgres_data:/var/lib/postgresql/data
-  volumes:
-    postgres_data: {}
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data: {}

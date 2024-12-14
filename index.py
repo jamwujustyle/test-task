@@ -8,7 +8,6 @@ from routes.cart import CartManagement
 from flask_mail import Mail
 from email_verification.verification import handle_email_verification
 from dotenv import load_dotenv
-import os
 from flask_jwt_extended import JWTManager
 from swagger.swagger import setup_swagger
 from flask_cors import CORS

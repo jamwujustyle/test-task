@@ -210,26 +210,60 @@
         "description": "deletes user at the given id",
         "parameters": [
           {
-            "in": "id",
+            "in": "path",
             "name": "id",
             "required": true,
             "type": "integer"
-          }
+          } 
         ],
         "security": [
           {
             "BearerAuth": []
           }
         ],
-        "responses": [
-          {
+        "responses": {
             "200": {"description": "deleted user successfully"},
+            "400": {"description": "could not resolve for user at the given id"},
             "404": {"description": "user at the given id is not found"}
-          }
-        ]
+        }
       }
+    },
+    "/categories/post": {
+    "post":{
+      "tags": ["categories"],
+      "summary": "post category",
+      "description": "posts category with provied category id, name, description",
+      "parameters": [
+        {
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "parent_category_id": {"type": "integer"}
+            }
+          }
+         }
+      ],
+      "security": [
+              {
+                "BearerAuth": []
+              }
+            ],
+            "responses": [
+              {
+                "201": {"description": "category has been created successfully"}, 
+                "400": {"description": "missing required arguments"},
+                "409": {"description": "no duplicate category names allowed"}
+              }
+            ]
     }
+  }
   },
+  
   "securityDefinitions": {
     "BearerAuth": {
       "type": "apiKey",
