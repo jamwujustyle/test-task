@@ -6,3 +6,4 @@ psycopg2_binary==2.9.10
 python-dotenv==1.0.1
 python_bcrypt==0.3.2
 flask_swagger_ui==4.11.1
+Flask-Cors==5.0.0
