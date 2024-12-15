@@ -535,12 +535,11 @@
       {
         "in": "body",
         "name": "body",
-        "required": "true",
         "schema": {
           "type": "object",
           "properties": {
             "name": {"type": "string"},
-            "price": {"type": "string"},
+            "price": {"type": "number", "format": "float"},
             "category_id": {"type": "integer"},
             "description": {"type": "string"}
           }
@@ -561,7 +560,7 @@
    ]
   }
 },
-"/products/detele/{id}": {
+"/products/delete/{id}": {
   "delete": {
     "tags": ["products"],
     "summary": "delete product",
@@ -583,6 +582,194 @@
       {
         "200": {"description": "deleted product at the given id successfully"},
         "404": {"description": "product at the given id not found"}
+      }
+    ]
+  }
+},
+"/orders/post": {
+  "post": {
+    "tags": ["orders"],
+    "summary": "post order",
+    "description": "creates an order with provided data",
+    "parameters": [
+      {
+        "in": "body",
+        "name": "body",
+        "required": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "user_id": {"type": "integer"},
+            "status": {"type": "string"},
+            "shipping_status": {"type": "string"},
+            "shipping_address": {"type": "string"},
+            "payment_method": {"type": "string"},
+            "payment_status": {"type": "string"},
+            "order_items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "product_id": {"type": "integer"},
+                  "quantity": {"type": "integer"}
+                }
+              }
+            }
+          }
+        }
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": {
+      "201": {"description": "created order with provided data"},
+      "401": {"description": "access denied"},
+      "400": {"description": "missing required arguments"}
+    }
+  }
+},
+"/orders/get": {
+  "get":{
+    "tags": ["orders"],
+    "summary": "get orders",
+    "description": "returns all orders",
+    "responses": [ {
+      "200": {"description": "returned all existing orders"},
+      "404": {"description": "no orders were found"}
+    }
+    ]
+  }
+},
+"/orders/get/{id}": {
+  "get": {
+    "tags": ["orders"],
+    "summary": "get orders",
+    "description": "returns orders at the given id",
+    "parameters":[
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "retrieved orders at the given id"},
+        "404": {"description": "orders at the given id not found"}
+      }
+    ]
+  }
+},
+"/orders/put/{id}": {
+  "put": {
+    "tags": ["orders"],
+    "summary": "update orders",
+    "description": "updated orders at the given id, missing fields get reset",
+    "parameters":[
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      },
+      {
+        "in": "body",
+        "name": "body",
+        "schema": {
+          "type": "object",
+          "properties":{
+            "name": {"type": "string"},
+            "category_id": {"type": "integer"},
+            "price": {"type": "number", "format": "float"}
+          }
+        }
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "201": {"description": "updated orders at the given id successfully"},
+        "404": {"description": "orders at the given id not found"},
+        "400": {"description": "missing required arguments"}
+      }
+    ]
+  }
+},
+"/orders/patch/{id}": {
+  "patch": {
+    "tags": ["orders"],
+    "summary": "update orders",
+    "description": "updates orders at the given id, missing fields preserved",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      },
+      {
+        "in": "body",
+        "name": "body",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "price": {"type": "number", "format": "float"},
+            "category_id": {"type": "integer"},
+            "description": {"type": "string"}
+          }
+        }
+      }
+    ],
+   "security": [
+    {
+      "BearerAuth": []
+    }
+   ],
+   "responses": [
+    {
+      "201": {"description":"product data has been updated"},
+      "400": {"description": "missing required arguments"},
+      "404": {"description": "product at the given id not found"}
+    }
+   ]
+  }
+},
+"/orders/delete/{id}": {
+  "delete": {
+    "tags": ["orders"],
+    "summary": "delete orders",
+    "description": "deletes orders at the given id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "deleted orders at the given id successfully"},
+        "404": {"description": "orders at the given id not found"}
       }
     ]
   }

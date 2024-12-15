@@ -86,7 +86,8 @@ def delete_records_from_table(table_name, **kwargs):
             cursor = conn.cursor(cursor_factory=DictCursor)
             cursor.execute(query, (kwargs["id"],))
             conn.commit()
-            return True
+            if cursor.rowcount > 0:
+                return True
     except Exception as ex:
         current_app.logger.debug(f"error deleting records: {str(ex)}")
         return None

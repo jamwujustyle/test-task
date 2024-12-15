@@ -10,7 +10,6 @@ from routes.util.utils import (
     append_for_patch,
     check_for_admin,
 )
-import json
 
 
 class OrderManagement:
@@ -23,25 +22,25 @@ class OrderManagement:
         @self.blueprint.route("/orders/post", methods=["POST"])
         @jwt_required()
         def post():
+            check_for_admin()
             data = request.get_json()
             if not data:
                 return jsonify({"error": "request body is empty"}), 400
-            claims = get_jwt()
-            if not claims:
-                return jsonify({"error": "could not authenticate"}), 401
+
             user_id = data.get("user_id")
             status = data.get("status")
             shipping_address = data.get("shipping_address")
             payment_method = data.get("payment_method")
             payment_status = data.get("payment_status")
             shipping_status = data.get("shipping_status")
+            # total_price = data.get("total_price")
             tracking_number = generate_tracking_number()
-            products = data.get("products")
+            products = data.get("order_items")
             if any(not value for value in [user_id, shipping_address]):
                 return jsonify({"error": "missing required arguments"}), 400
 
             query = f"""INSERT INTO {self.table_name} 
-            (user_id, status, shipping_address, payment_method, payment_status, shipping_status, tracking_number) VALUES (%s, %s, %s, %s, %s, %s, %s ) RETURNING *;"""
+            (user_id, status, shipping_address, payment_method, payment_status, shipping_status, tracking_number) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;"""
             params = [
                 user_id,
                 status,
@@ -49,30 +48,50 @@ class OrderManagement:
                 payment_method,
                 payment_status,
                 shipping_status,
+                # total_price,
                 tracking_number,
             ]
 
             try:
                 with connect() as conn:
-                    cursor = conn.cursor()
+                    cursor = conn.cursor(cursor_factory=DictCursor)
                     cursor.execute(query, params)
-                    order_id = cursor.fetchone()[0]
+                    order = cursor.fetchone()
+                    if not order:
+                        return jsonify({"error": "order creation failed"}), 400
+                    total_price = 0
                     for product in products:
                         product_id = product.get("product_id")
                         quantity = product.get("quantity")
-
+                        if any(not value for value in [product_id, quantity]):
+                            return jsonify({"error": "missing required arguments"}), 400
+                        product = select_from_table("products", id=product_id)
+                        if product is None:
+                            return (
+                                jsonify(
+                                    {"error": "could not fetch product at given id"}
+                                ),
+                                404,
+                            )
+                        total_price += product["price"] * quantity
                         cursor.execute(
                             """INSERT INTO order_items (order_id, product_id, quantity)
                         VALUES (%s, %s, %s) ON CONFLICT (order_id, product_id) DO UPDATE SET quantity = order_items.quantity + 1;""",
-                            (order_id, product_id, quantity),
+                            (order["id"], product_id, quantity),
                         )
-                    conn.commit()
-                    return (
-                        jsonify(
-                            {"msg": "order created successfully", "order_id": order_id}
-                        ),
-                        201,
+                    cursor.execute(
+                        f"UPDATE {self.table_name} SET total_price = %s WHERE id = %s",
+                        (total_price, order["id"]),
                     )
+                    conn.commit()
+                    new_data = select_from_table(self.table_name, id=order["id"])
+                    if new_data:
+                        return (
+                            jsonify(
+                                {"order created": new_data, "additional info": products}
+                            ),
+                            201,
+                        )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

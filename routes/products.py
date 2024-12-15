@@ -3,7 +3,13 @@ from flask_jwt_extended import get_jwt, jwt_required
 from db import connect
 from psycopg2.extras import DictCursor
 from queries.db_queries import select_from_table, delete_records_from_table
-from routes.util.utils import check_for_admin, reset_sequence_id, destructuring_utility
+from routes.util.utils import (
+    check_for_admin,
+    reset_sequence_id,
+    destructuring_utility,
+    append_update_field,
+    append_for_patch,
+)
 
 
 class ProductManagement:
@@ -68,42 +74,27 @@ class ProductManagement:
         @self.blueprint.route("/products/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
+            check_for_admin()
             data = request.get_json()
             if not data:
                 return jsonify({"error": "empty request body"}), 400
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
+
             name = data.get("name")
             description = data.get("description")
             category_id = data.get("category_id")
             price = data.get("price")
             updated_at = data.get("updated_at")
-            if not name or not price or not category_id:
+            if any(not value for value in [name, category_id, price]):
                 return jsonify({"error": "missing required arguments"}), 400
 
             query = "UPDATE products SET "
             update_fields = []
             params = []
-            if name:
-                update_fields.append("name = %s")
-                params.append(name)
-            if description is not None:
-                update_fields.append("description = %s")
-                params.append(description)
-            else:
-                update_fields.append("description = NULL")
-            if category_id:
-                update_fields.append("category_id = %s")
-                params.append(category_id)
-            if price:
-                update_fields.append("price = %s")
-                params.append(price)
-            if updated_at is not None:
-                update_fields.append("updated_at = %s")
-                params.append(updated_at)
-            else:
-                update_fields.append("updated_at = CURRENT_TIMESTAMP")
+            append_update_field(update_fields, params, "name", name)
+            append_update_field(update_fields, params, "description", description)
+            append_update_field(update_fields, params, "category_id", category_id)
+            append_update_field(update_fields, params, "price", price)
+            append_update_field(update_fields, params, "updated_at", None)
 
             query += ", ".join(update_fields) + " WHERE id = %s"
             params.append(id)
@@ -115,12 +106,7 @@ class ProductManagement:
                         conn.commit()
                         new_data = select_from_table(self.table_name, id=id)
                         return (
-                            jsonify(
-                                {
-                                    "message": "product updated successfully",
-                                    "new data": new_data,
-                                }
-                            ),
+                            jsonify({"message": destructuring_utility(new_data)}),
                             200,
                         )
                     else:
@@ -134,40 +120,24 @@ class ProductManagement:
         @self.blueprint.route("/products/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
-
+            check_for_admin()
             data = request.get_json()
             if not data:
                 return jsonify({"error": "request body is empty"}), 400
             name = data.get("name")
             description = data.get("description")
             category_id = data.get("category_id")
-            updated_at = data.get("updated_at")
             price = data.get("price")
 
             query = f"UPDATE {self.table_name} SET "
             update_fields = []
             params = []
+            append_for_patch(update_fields, params, "name", name)
+            append_for_patch(update_fields, params, "description", description)
+            append_for_patch(update_fields, params, "category_id", category_id)
+            append_for_patch(update_fields, params, "price", price)
+            append_for_patch(update_fields, params, "updated_at", None)
 
-            if name:
-                update_fields.append("name = %s")
-                params.append(name)
-            if description:
-                update_fields.append("description = %s")
-                params.append(description)
-            if category_id:
-                update_fields.append("category_id = %s")
-                params.append(category_id)
-            if updated_at is not None:
-                update_fields.append("updated_at = %s")
-                params.append(updated_at)
-            else:
-                updated_at.append("updated_at = NULL")
-            if price:
-                update_fields.append("price = %s")
-                params.append(price)
             query += (", ").join(update_fields) + " WHERE id = %s"
             params.append(id)
             try:
@@ -177,17 +147,9 @@ class ProductManagement:
                     if cursor.rowcount > 0:
 
                         conn.commit()
+                        new_data = select_from_table(self.table_name, id=id)
                         return (
-                            jsonify(
-                                {
-                                    "msg": "product updated successfully",
-                                    "name": name,
-                                    "description": description,
-                                    "category id": category_id,
-                                    "price": price,
-                                    "updated at": updated_at,
-                                }
-                            ),
+                            jsonify({"updated": destructuring_utility(new_data)}),
                             200,
                         )
                     else:
@@ -201,35 +163,22 @@ class ProductManagement:
         @self.blueprint.route("/products/delete/<id>", methods=["DELETE"])
         @jwt_required()
         def delete(id):
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
+            check_for_admin()
             product_to_delete = select_from_table(self.table_name, id=id)
             try:
                 result = delete_records_from_table(self.table_name, id=id)
-                if result is not None:
-                    reset_id_sequence()
-                    return jsonify({"deleted data": product_to_delete}), 200
+                if result:
+                    reset_sequence_id(self.table_name)
+                    return (
+                        jsonify(
+                            {"deleted data": destructuring_utility(product_to_delete)}
+                        ),
+                        200,
+                    )
                 else:
                     return jsonify({"error": "could not find or delete product"}), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
-
-        def reset_id_sequence():
-            query = f"""
-                SELECT setval(
-                            pg_get_serial_sequence('{self.table_name}', 'id'),
-                            (SELECT MIN(id) FROM {self.table_name}),
-                            false
-                            );
-                            """
-            try:
-                with connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query)
-                    conn.commit()
-            except Exception as ex:
-                current_app.logger.debug(f"error resetting id sequence {str(ex)}")
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))
