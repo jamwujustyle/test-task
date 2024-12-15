@@ -222,7 +222,7 @@
           }
         ],
         "responses": {
-            "200": {"description": "deleted user successfully"},
+            "200": {"description": "deleted user successfully. serial sequence reset to min available"},
             "400": {"description": "could not resolve for user at the given id"},
             "404": {"description": "user at the given id is not found"}
         }
@@ -377,6 +377,32 @@
         "responses": [
           {
             "201": {"description": "updated category at the given id"},
+            "404": {"description": "category at the given id not found"}
+          }
+        ]
+    }
+  },
+  "/categories/delete/{id}":{
+    "delete": {
+      "tags": ["categories"],
+      "summary": "delete category",
+      "description": "deletes user at the given id",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "type": "integer",
+          "required": true
+        }
+      ],
+      "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "201": {"description": "deleted category at the given id. serial sequence reset to min available"},
             "404": {"description": "category at the given id not found"}
           }
         ]

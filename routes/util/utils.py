@@ -53,7 +53,7 @@ def reset_sequence_id(table_name):
     query = f"""
                     SELECT setval(
                     pg_get_serial_sequence('{table_name}', 'id'),
-                    COALESCE((SELECT MIN(id) FROM {table_name}), 1) + 1,
+                    COALESCE((SELECT MAX(id) FROM {table_name}), 1) + 1,
                     false
                     );
                 """

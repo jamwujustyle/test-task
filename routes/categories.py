@@ -217,24 +217,7 @@ class CategoryManagement:
                     )
 
             except Exception as ex:
-
                 return jsonify({"error": str(ex)}), 500
-
-        def reset_id_sequence():
-            query = f"""
-                SELECT setval(
-                            pg_get_serial_sequence('{self.table_name}', 'id'),
-                            (SELECT MAX(id) FROM {self.table_name}),
-                            false
-                            );
-                            """
-            try:
-                with connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query)
-                    conn.commit()
-            except Exception as ex:
-                current_app.logger.debug(f"error resetting id sequence {str(ex)}")
 
         @self.blueprint.route("/categories/delete/<id>", methods=["DELETE"])
         @jwt_required()
@@ -242,25 +225,11 @@ class CategoryManagement:
             check_for_admin()
             try:
                 category_to_delete = select_from_table(self.table_name, id=id)
-                if category_to_delete:
-                    current_app.logger.debug(
-                        f"fetched the category with id: {category_to_delete.get('id')}"
-                    )
-                else:
-                    current_app.logger.debug("category does not exists")
+                if not category_to_delete:
                     return jsonify({"error": "category does not exist"}), 404
-            except Exception as ex:
-                return jsonify({"error fetching category": str(ex)}), 500
-            try:
                 if delete_records_from_table(self.table_name, id=id):
-
-                    category_to_delete = select_from_table(self.table_name, id=id)
-                    if not category_to_delete:
-                        current_app.logger.debug(
-                            f"deleted successfully: {category_to_delete}"
-                        )
-                        reset_id_sequence()
-                        return jsonify({"category deleted": category_to_delete}), 200
+                    reset_sequence_id(self.table_name)
+                    return jsonify({"category deleted": category_to_delete}), 200
 
             except Exception as ex:
                 return jsonify({"error from outer-most": str(ex)}), 500
