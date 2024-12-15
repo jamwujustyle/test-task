@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "version": "1.0.0",
-    "title": "User Management API",
+    "title": "Online Store API, probably",
     "description": "API for user registration, login, profile management, and administrative actions."
   },
   "host": "localhost:5000",

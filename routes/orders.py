@@ -9,6 +9,8 @@ from routes.util.utils import (
     append_update_field,
     append_for_patch,
     check_for_admin,
+    handle_tracking_number,
+    reset_sequence_id,
 )
 
 
@@ -187,86 +189,68 @@ class OrderManagement:
 
             try:
                 with connect() as conn:
-                    with conn.cursor(cursor_factory=DictCursor) as cursor:
+                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    handle_tracking_number(self.table_name, id, tracking_number)
+
+                    query += ", ".join(update_fields) + " WHERE id = %s RETURNING *;"
+                    params.append(int(id))
+
+                    cursor.execute(query, params)
+                    updated = cursor.fetchone()
+
+                    if not updated:
+                        return jsonify({"error": "could not update order"}), 400
+
+                    total_price = 0
+                    for product in products:
+                        product_id = product.get("product_id")
+                        quantity = product.get("quantity")
                         cursor.execute(
-                            "SELECT tracking_number FROM orders WHERE id = %s", (id,)
+                            "SELECT price FROM products WHERE id = %s;",
+                            (product_id,),
                         )
-                        existing_record = cursor.fetchone()
-
-                        if existing_record and existing_record["tracking_number"]:
-                            tracking_number = None
-
-                        if tracking_number:
-                            append_update_field(
-                                update_fields,
-                                params,
-                                "tracking_number",
-                                tracking_number,
+                        product_price_record = cursor.fetchone()
+                        if not product_price_record:
+                            return (
+                                jsonify(
+                                    {"error": f"product with ID {product_id} not found"}
+                                ),
+                                404,
                             )
+                        product_price = product_price_record["price"]
 
-                        query += (
-                            ", ".join(update_fields) + " WHERE id = %s RETURNING *;"
-                        )
-                        params.append(int(id))
-
-                        cursor.execute(query, params)
-                        updated = cursor.fetchone()
-
-                        if not updated:
-                            return jsonify({"error": "could not update order"}), 400
-
-                        total_price = 0
-                        for product in products:
-                            product_id = product.get("product_id")
-                            quantity = product.get("quantity")
-                            cursor.execute(
-                                "SELECT price FROM products WHERE id = %s;",
-                                (product_id,),
-                            )
-                            product_price_record = cursor.fetchone()
-                            if not product_price_record:
-                                return (
-                                    jsonify(
-                                        {
-                                            "error": f"product with ID {product_id} not found"
-                                        }
-                                    ),
-                                    404,
-                                )
-                            product_price = product_price_record["price"]
-
-                            total_price += product_price * quantity
-                            order_items_query = f"""
+                        total_price += product_price * quantity
+                        order_items_query = f"""
                             INSERT INTO order_items (order_id, product_id, quantity)
                             VALUES (%s, %s, %s)
                             ON CONFLICT (product_id, order_id)
                             DO UPDATE SET quantity = order_items.quantity + %s;                    
                             """
-                            cursor.execute(
-                                order_items_query,
-                                (
-                                    id,
-                                    product_id,
-                                    quantity,
-                                    quantity,
-                                ),
-                            )
-
                         cursor.execute(
-                            "UPDATE orders SET total_price = %s WHERE id = %s",
+                            order_items_query,
                             (
-                                total_price,
                                 id,
+                                product_id,
+                                quantity,
+                                quantity,
                             ),
                         )
-                        conn.commit()
 
-                        return (
-                            jsonify(
-                                {"updated order": "updated", "total price": total_price}
-                            ),
-                            201,
-                        )
+                    cursor.execute(
+                        "UPDATE orders SET total_price = %s WHERE id = %s",
+                        (
+                            total_price,
+                            id,
+                        ),
+                    )
+                    conn.commit()
+
+                    return (
+                        jsonify(
+                            {"updated order": "updated", "total price": total_price}
+                        ),
+                        201,
+                    )
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
@@ -283,7 +267,8 @@ class OrderManagement:
             payment_method = data.get("payment_method")
             payment_status = data.get("payment_status")
             shipping_status = data.get("shipping_status")
-            products = data.get("products")
+            tracking_number = data.get("tracking_number")
+            products = data.get("order_items")
             update_fields = []
             params = []
             query = f"UPDATE {self.table_name} SET "
@@ -299,6 +284,7 @@ class OrderManagement:
             params.append(int(id))
             try:
                 with connect() as conn:
+                    handle_tracking_number(self.table_name, id, tracking_number)
                     cursor = conn.cursor(cursor_factory=DictCursor)
                     cursor.execute(query, params)
                     updated = cursor.fetchone()
@@ -345,7 +331,15 @@ class OrderManagement:
                         (total_price, id),
                     )
                     conn.commit()
-                    return jsonify({"msg": "updated successfully"}), 200
+                    order = select_from_table(self.table_name, id=id)
+                    order_item = select_from_table("order_items", order_id=id)
+                    new_data = []
+                    if order and order_item:
+                        new_data = [order, order_item]
+                    elif order:
+                        new_data = [order]
+
+                    return jsonify({"msg": new_data}), 200
 
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
@@ -354,32 +348,23 @@ class OrderManagement:
         @jwt_required()
         def delete(id):
             check_for_admin()
-            data_to_delete = select_from_table(self.table_name, id=id)
+            data_to_delete = []
+            order = select_from_table(self.table_name, id=id)
+            item = select_from_table("order_items", order_id=id)
+            if order and item:
+                data_to_delete = [order, item]
+            elif order:
+                data_to_delete = [order]
+            else:
+                raise Exception
             try:
                 result = delete_records_from_table(self.table_name, id=id)
                 if result is not None:
-                    reset_id_sequence()
+                    for value in ["order_items", "orders"]:
+                        reset_sequence_id(value)
                     return jsonify({"deleted data": data_to_delete}), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
-
-        def reset_id_sequence():
-            query = f"""
-                SELECT setval(
-                            pg_get_serial_sequence('{self.table_name}', 'id'),
-                            COALESCE((SELECT MIN(id) FROM {self.table_name}), 1),
-                            false
-                            );
-                """
-            try:
-                with connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query)
-                    conn.commit()
-                    return "sequence reset successfully"
-            except Exception as ex:
-                current_app.logger.debug(f"error resetting id sequence {str(ex)}")
-                return None
 
     def register_blueprint(self, app):
         app.register_blueprint(self.blueprint(app))

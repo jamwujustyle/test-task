@@ -4,6 +4,7 @@ from flask import jsonify, abort
 from flask_jwt_extended import get_jwt
 from db import connect
 import re
+from psycopg2.extras import DictCursor
 
 
 def destructuring_utility(data):
@@ -50,13 +51,22 @@ def check_for_admin():
 
 
 def reset_sequence_id(table_name):
-    query = f"""
+    if table_name == "order_items":
+        query = f"""
                     SELECT setval(
-                    pg_get_serial_sequence('{table_name}', 'id'),
-                    COALESCE((SELECT MAX(id) FROM {table_name}), 1) + 1,
+                    pg_get_serial_sequence('{table_name}', 'order_id'),
+                    COALESCE((SELECT MAX(order_id) FROM {table_name}), 1) + 1,
                     false
                     );
                 """
+    else:
+        query = f"""
+                        SELECT setval(
+                        pg_get_serial_sequence('{table_name}', 'id'),
+                        COALESCE((SELECT MAX(id) FROM {table_name}), 1) + 1,
+                        false
+                        );
+                    """
     try:
         with connect() as conn:
             cursor = conn.cursor()
@@ -76,3 +86,14 @@ def email_validation(email):
     if not re.match(email_regex, email):
         return jsonify({"error": "invalid email format"}), 400
     return True
+
+
+def handle_tracking_number(table_name, id, tracking_number):
+    with connect() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cursor:
+            cursor.execute(
+                f"SELECT tracking_number FROM {table_name} WHERE id = %s;", (id,)
+            )
+            existing_record = cursor.fetchone()
+            if existing_record and existing_record == "tracking_number":
+                tracking_number = None
