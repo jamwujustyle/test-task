@@ -4,6 +4,7 @@ from db import connect
 from routes.util.utils import destructuring_utility, reset_sequence_id
 from psycopg2.extras import DictCursor
 from queries.db_queries import select_from_table, delete_records_from_table
+from routes.util.utils import check_for_admin
 
 
 class CartManagement:
@@ -16,16 +17,14 @@ class CartManagement:
         @self.blueprint.route("/cart/post", methods=["POST"])
         @jwt_required()
         def post():
-            claims = get_jwt()
-            if claims is None:
-                abort(401, description="not autorized")
+            check_for_admin()
             data = request.get_json()
             if not data:
                 return jsonify({"error": "empty request body "}), 400
             quantity = data.get("quantity")
             user_id = data.get("user_id")
             product_id = data.get("product_id")
-            if any(not value for value in [user_id, product_id]):
+            if any(not value for value in [user_id, product_id, quantity]):
                 return jsonify({"error": "missing required arguments"}), 400
 
             params = [user_id, product_id, quantity, quantity]

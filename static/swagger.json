@@ -810,6 +810,84 @@
       }
     ]
   }
+},
+"/cart/post": {
+  "post": {
+    "tags": ["cart"],
+    "summary": "add to cart",
+    "description": "adds product to cart for user",
+    "parameters": [
+      {
+        "in": "body",
+        "name": "body",
+        "required": true,
+        "schema": {
+          "type": "object",
+          "properties": 
+            {
+              "user_id": {"type": "integer"},
+              "product_id": {"type": "integer"},
+              "quantity": {"type": "integer"}
+            }
+        }
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "added to cart successfully"},
+        "500": {"description": "error adding to cart"}
+      }
+    ]
+  }
+},
+"/cart/get": {
+  "get": {
+    "tags": ["cart"],
+    "summary": "get cart",
+    "description": "retrieve all products from cart",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "successfully retrieved products from cart"},
+        "404": {"description": "cart is empty"}
+      }
+    ]
+  }
+},
+"/cart/delete/{id}": {
+  "delete": {
+    "tags": ["cart"],
+    "summary": "delete cart",
+    "description": "deletes cart at the given id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "deleted cart for the user"},
+        "404": {"description": "could not find cart for the given user"}
+      }
+    ]
+  }
 }
   },
   
