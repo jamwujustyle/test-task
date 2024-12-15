@@ -3,6 +3,7 @@ from flask_jwt_extended import get_jwt, jwt_required
 from db import connect
 from psycopg2.extras import DictCursor
 from queries.db_queries import select_from_table, delete_records_from_table
+from routes.util.utils import check_for_admin, reset_sequence_id, destructuring_utility
 
 
 class ProductManagement:
@@ -15,57 +16,29 @@ class ProductManagement:
         @self.blueprint.route("/products/post", methods=["POST"])
         @jwt_required()
         def post():
+            check_for_admin()
             data = request.get_json()
             if not data:
-                current_app.logger.debug("request body is empty")
                 return jsonify({"error": "missinq required arguments"}), 400
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
+
             name = data.get("name")
             description = data.get("description")
             category_id = data.get("category_id")
             price = data.get("price")
-            if not name or not category_id or not price:
-                current_app.logger.debug(
-                    "request body lacks arguments (name, price, parent_id)"
-                )
+            if any(not value for value in [name, category_id, price]):
                 return jsonify({"error": "missing required arguments"}), 400
-
-            try:
-                category_id = int(category_id) if category_id is not None else None
-            except ValueError as ex:
-                current_app.logger.debug("error converting category_id to integer")
-                return jsonify({"error": str(ex)}), 409
-
-            try:
-                category = select_from_table("categories", id=category_id)
-                if category is None:
-                    return jsonify({"error": "cant get category"})
-                current_app.logger.debug(f"here is your category: {category}")
-            except Exception as ex:
-                return jsonify({"error": str(ex)}), 404
             query = f"""INSERT INTO {self.table_name} (name, description, category_id, price) VALUES (%s, %s, %s, %s) RETURNING name, description, category_id, price;"""
             params = [name, description, category_id, price]
             try:
                 with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
+                    cursor = conn.cursor()
                     cursor.execute(query, params)
                     result = cursor.fetchone()
-                    if result is None:
+                    if not result:
                         return jsonify({"error": "found nothing"}), 404
                     conn.commit()
                     return (
-                        jsonify(
-                            {
-                                "msg": "entry successfull",
-                                "parent category": category["name"],
-                                "name": name,
-                                "description": description,
-                                "price": price,
-                                "category id": category_id,
-                            }
-                        ),
+                        jsonify({"msg": result}),
                         201,
                     )
             except Exception as ex:
@@ -73,29 +46,11 @@ class ProductManagement:
 
         @self.blueprint.route("/products/get", methods=["GET"])
         def get_all_products():
-            query = f"""SELECT * FROM {self.table_name};"""
             try:
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(query)
-                    products = cursor.fetchall()
-                    if products is not None:
-
-                        result = [
-                            {
-                                "id": product["id"],
-                                "name": product["name"],
-                                "description": product["description"],
-                                "price": product["price"],
-                                "created at": product["created_at"],
-                                "updated at": product["updated_at"],
-                                "category id": product["category_id"],
-                            }
-                            for product in products
-                        ]
-                        return jsonify(result)
-                    else:
-                        return jsonify({"error": "no products found"}), 404
+                products = select_from_table(self.table_name)
+                if products is None:
+                    return jsonify({"error": "no products to fetch"}), 404
+                return jsonify({"products": destructuring_utility(products)})
 
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
@@ -104,21 +59,9 @@ class ProductManagement:
         def get_by_id(id):
             try:
                 product = select_from_table(self.table_name, id=id)
-                if product is not None:
-                    return jsonify(
-                        {
-                            "id": product["id"],
-                            "name": product["name"],
-                            "description": product["description"],
-                            "price": product["price"],
-                            "created at": product["created_at"],
-                            "updated at": product["updated_at"],
-                            "category id": product["category_id"],
-                        }
-                    )
-                else:
+                if product is None:
                     return jsonify({"error": "product not found"}), 404
-
+                return jsonify({"product": destructuring_utility(product)})
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

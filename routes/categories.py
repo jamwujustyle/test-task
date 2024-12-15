@@ -12,6 +12,7 @@ from routes.util.utils import (
     append_update_field,
     reset_sequence_id,
     append_for_patch,
+    destructuring_utility,
 )
 
 
@@ -58,18 +59,7 @@ class CategoryManagement:
             try:
                 categories = select_from_table(self.table_name)
                 if categories:
-                    categories_data = [
-                        {
-                            "id": category["id"],
-                            "name": category["name"],
-                            "description": category["description"],
-                            "parent_category_id": category["parent_category_id"],
-                            "created_at": category["created_at"],
-                            "updated_at": category["updated_at"],
-                        }
-                        for category in categories
-                    ]
-                    return jsonify({"categories": categories_data})
+                    return jsonify({"msg": destructuring_utility(categories)})
                 return (
                     jsonify({"error": "error retrieving categories from table"}),
                     500,
@@ -83,17 +73,7 @@ class CategoryManagement:
                 category = select_from_table(self.table_name, id=id)
                 if category:
                     return (
-                        jsonify(
-                            {
-                                "name": category.get("name"),
-                                "description": category.get("description"),
-                                "parent_category_id": category.get(
-                                    "parent_category_id"
-                                ),
-                                "created_at": category.get("created_at"),
-                                "updated_at": category.get("updated_at"),
-                            }
-                        ),
+                        jsonify({"msg": destructuring_utility(category)}),
                         200,
                     )
                 else:
@@ -148,15 +128,8 @@ class CategoryManagement:
                     cursor.execute(
                         f"select updated_at from {self.table_name} where id = %s", (id,)
                     )
-                    updated_at = cursor.fetchone()
-                    return jsonify(
-                        {
-                            "msg": "category updated",
-                            "name": name,
-                            "description": description,
-                            "updated_at": updated_at,
-                        }
-                    )
+                    new_data = select_from_table(self.table_name, id=id)
+                    return jsonify({"msg": destructuring_utility(new_data)}), 200
             except Exception as ex:
                 return jsonify({"outer error": str(ex)}), 500
 
@@ -203,18 +176,7 @@ class CategoryManagement:
 
                     conn.commit()
                     new_data = select_from_table(self.table_name, id=id)
-                    return (
-                        jsonify(
-                            {
-                                "msg": "user updated",
-                                "name": new_data["name"],
-                                "description": new_data["description"],
-                                "updated at": new_data["updated_at"],
-                                "parent category id": new_data["parent_category_id"],
-                            }
-                        ),
-                        200,
-                    )
+                    return jsonify({"msg": destructuring_utility(new_data)}), 200
 
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
@@ -229,7 +191,16 @@ class CategoryManagement:
                     return jsonify({"error": "category does not exist"}), 404
                 if delete_records_from_table(self.table_name, id=id):
                     reset_sequence_id(self.table_name)
-                    return jsonify({"category deleted": category_to_delete}), 200
+                    return (
+                        jsonify(
+                            {
+                                "category deleted": destructuring_utility(
+                                    category_to_delete
+                                )
+                            }
+                        ),
+                        200,
+                    )
 
             except Exception as ex:
                 return jsonify({"error from outer-most": str(ex)}), 500

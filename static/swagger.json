@@ -407,7 +407,186 @@
           }
         ]
     }
+  },
+  "/products/post": {
+    "post": {
+    "tags": ["products"],
+    "summary": "post product",
+    "description": "creates a product with provided data",
+    "parameters": [
+      {
+        "in": "body",
+        "name": "body",
+        "required": true,
+        "schema":{
+          "type": "object",
+          "properties":{
+            "name": {"type": "string"},
+            "description": {"type": "string"},
+            "category_id": {"type": "integer"},
+            "price": {"type": "number", "format": "float"}
+          }
+        }
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "201": {"description": "created product with provided data"},
+        "401": {"description": "access denied"},
+        "400": {"description": "missing required arguments"}
+      }
+    ]
   }
+},
+"/products/get": {
+  "get":{
+    "tags": ["products"],
+    "summary": "get products",
+    "description": "returns all products",
+    "responses": [ {
+      "200": {"description": "returned all existing products"},
+      "404": {"description": "no products were found"}
+    }
+    ]
+  }
+},
+"/products/get/{id}": {
+  "get": {
+    "tags": ["products"],
+    "summary": "get product",
+    "description": "returns product at the given id",
+    "parameters":[
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "retrieved product at the given id"},
+        "404": {"description": "product at the given id not found"}
+      }
+    ]
+  }
+},
+"/products/put/{id}": {
+  "put": {
+    "tags": ["products"],
+    "summary": "update products",
+    "description": "updated product at the given id, missing fields get reset",
+    "parameters":[
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      },
+      {
+        "in": "body",
+        "name": "body",
+        "schema": {
+          "type": "object",
+          "properties":{
+            "name": {"type": "string"},
+            "category_id": {"type": "integer"},
+            "price": {"type": "number", "format": "float"}
+          }
+        }
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "201": {"description": "updated product at the given id successfully"},
+        "404": {"description": "product at the given id not found"},
+        "400": {"description": "missing required arguments"}
+      }
+    ]
+  }
+},
+"/products/patch/{id}": {
+  "patch": {
+    "tags": ["products"],
+    "summary": "update products",
+    "description": "updates products at the given id, missing fields preserved",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      },
+      {
+        "in": "body",
+        "name": "body",
+        "required": "true",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "price": {"type": "string"},
+            "category_id": {"type": "integer"},
+            "description": {"type": "string"}
+          }
+        }
+      }
+    ],
+   "security": [
+    {
+      "BearerAuth": []
+    }
+   ],
+   "responses": [
+    {
+      "201": {"description":"product data has been updated"},
+      "400": {"description": "missing required arguments"},
+      "404": {"description": "product at the given id not found"}
+    }
+   ]
+  }
+},
+"/products/detele/{id}": {
+  "delete": {
+    "tags": ["products"],
+    "summary": "delete product",
+    "description": "deletes product at the given id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "type": "integer"
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "deleted product at the given id successfully"},
+        "404": {"description": "product at the given id not found"}
+      }
+    ]
+  }
+}
   },
   
   "securityDefinitions": {

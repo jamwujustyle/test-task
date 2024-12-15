@@ -14,7 +14,7 @@ def destructuring_utility(data):
         result = dict(data)
     else:
         result = []
-    return result, jsonify({"msg": result}), 200
+    return result
 
 
 def generate_tracking_number(prefix="TRK", length=10):

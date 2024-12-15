@@ -42,7 +42,6 @@ def select_from_table(table_name, **kwargs):
                     query = f"SELECT * FROM {table_name} WHERE id = %s;"
                     cur.execute(query, (kwargs["id"],))
                     result = cur.fetchone()
-
                 else:
                     query = f"SELECT * FROM {table_name};"
                     cur.execute(query)
