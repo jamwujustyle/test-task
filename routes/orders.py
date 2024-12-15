@@ -98,38 +98,56 @@ class OrderManagement:
         @self.blueprint.route("/orders/get", methods=["GET"])
         @jwt_required()
         def get_all_orders():
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
+            check_for_admin()
             try:
-                query = f"SELECT * FROM {self.table_name}"
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(query)
-                    orders = cursor.fetchall()
-                    # if not orders:
-                    #     return jsonify({"error": "no products to fetch"}), 404
-                    # return jsonify([dict(order) for order in orders]), 200
-                return destructuring_utility(orders)
+                orders = select_from_table(self.table_name)
+                order_items = select_from_table("order_items")
+
+                if not orders or not order_items:
+                    return jsonify({"error": "not found"}), 404
+                items_by_order = {}
+                for item in order_items:
+                    order_id = item["order_id"]
+                    if order_id not in items_by_order:
+                        items_by_order[order_id] = []
+                    if isinstance(item, (list, tuple)):
+                        item = {
+                            "order_id": item[0],
+                            "product_id": item[1],
+                            "quntity": item[2],
+                        }
+                    items_by_order[order_id].append(item)
+                combined_data = []
+                for order in orders:
+                    order_dict = dict(order)
+                    order_id = order_dict["id"]
+                    combined_data.append(
+                        {
+                            "order": order_dict,
+                            "order_items": items_by_order.get(order_id, []),
+                        }
+                    )
+                return jsonify({"data": combined_data}), 200
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 
         @self.blueprint.route("/orders/get/<id>", methods=["GET"])
         @jwt_required()
         def get_order_by_id(id):
-            claims = get_jwt()
-            if claims.get("role") != "admin":
-                return jsonify({"error": "insufficient permissions"}), 401
+            check_for_admin()
             try:
-                query = f"SELECT * FROM {self.table_name} WHERE id = %s;"
-                with connect() as conn:
-                    cursor = conn.cursor(cursor_factory=DictCursor)
-                    cursor.execute(query, id)
-                    orders = cursor.fetchall()
-                    if not orders:
-                        return jsonify({"error": "no orders to fetch"}), 404
-
-                return destructuring_utility(orders)
+                orders = select_from_table(self.table_name, id=id)
+                order_items = select_from_table("order_items", order_id=id)
+                if all(not value for value in [orders, order_items]):
+                    return jsonify({"error": "data retrieval failed"}), 404
+                data = []
+                if orders and order_items:
+                    data = [orders, order_items]
+                elif orders:
+                    data = [orders]
+                else:
+                    raise
+                return jsonify({"orders": destructuring_utility(data)})
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 500
 

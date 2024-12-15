@@ -42,11 +42,15 @@ def select_from_table(table_name, **kwargs):
                     query = f"SELECT * FROM {table_name} WHERE id = %s;"
                     cur.execute(query, (kwargs["id"],))
                     result = cur.fetchone()
+                elif "order_id" in kwargs:
+                    query = f"SELECT * FROM {table_name} WHERE order_id = %s;"
+                    cur.execute(query, (kwargs["order_id"],))
+                    result = cur.fetchone()
                 else:
                     query = f"SELECT * FROM {table_name};"
                     cur.execute(query)
                     result = cur.fetchall()
-                    return result
+                    return [dict(row) for row in result] if result else []
 
                 return dict(result) if result else None
     except (psycopg2.DatabaseError, Exception) as ex:

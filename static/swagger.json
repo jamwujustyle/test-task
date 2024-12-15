@@ -448,6 +448,11 @@
     "tags": ["products"],
     "summary": "get products",
     "description": "returns all products",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "responses": [ {
       "200": {"description": "returned all existing products"},
       "404": {"description": "no products were found"}
@@ -636,6 +641,11 @@
     "tags": ["orders"],
     "summary": "get orders",
     "description": "returns all orders",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "responses": [ {
       "200": {"description": "returned all existing orders"},
       "404": {"description": "no orders were found"}
