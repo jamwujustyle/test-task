@@ -343,6 +343,44 @@
           }
         ]
     }
+  },
+  "/categories/patch/{id}":{
+    "patch": {
+      "tags": ["categories"],
+      "summary": "patch category",
+      "description": "updates at the given id preserving existing data",
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "body",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "parent_category_id": {"type": "integer"}
+            }
+          }
+        }
+      ],
+      "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": [
+          {
+            "201": {"description": "updated category at the given id"},
+            "404": {"description": "category at the given id not found"}
+          }
+        ]
+    }
   }
   },
   

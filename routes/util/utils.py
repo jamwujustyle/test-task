@@ -39,6 +39,8 @@ def append_for_patch(fields, params, field_name, value):
     if value is not None:
         fields.append(f"{field_name} = %s")
         params.append(value)
+    elif field_name == "updated_at" and value is None:
+        fields.append(f"{field_name} = CURRENT_TIMESTAMP")
 
 
 def check_for_admin():

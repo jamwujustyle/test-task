@@ -7,7 +7,12 @@ from queries.db_queries import (
     insert_into_table,
     delete_records_from_table,
 )
-from routes.util.utils import check_for_admin, append_update_field, reset_sequence_id
+from routes.util.utils import (
+    check_for_admin,
+    append_update_field,
+    reset_sequence_id,
+    append_for_patch,
+)
 
 
 class CategoryManagement:
@@ -160,24 +165,25 @@ class CategoryManagement:
         def patch(id):
             check_for_admin()
             data = request.get_json()
+            if not data:
+                return jsonify({"error": "empty request body"}), 400
             name = data.get("name")
             description = data.get("description")
+            parent_category_id = data.get("parent_category_id")
             updated_at = data.get("updated_at")
-            if not name and not description:
-                current_app.logger.debug(
-                    "missing required arguments. at least 1 fields is neede to update"
-                )
-                return jsonify({"error": "missing arguments"}), 400
+            if all(not value for value in [name, description, parent_category_id]):
+                return jsonify({"error": "missing required arguments"}), 400
             update_fields = []
             params = []
             query = f"UPDATE {self.table_name} SET "
             try:
-                if name:
-                    update_fields.append("name = %s")
-                    params.append(name)
-                if description:
-                    update_fields.append("description = %s")
-                    params.append(description)
+                append_for_patch(update_fields, params, "name", name)
+                append_for_patch(update_fields, params, "description", description)
+                append_for_patch(update_fields, params, "updated_at", None)
+                append_for_patch(
+                    update_fields, params, "parent_category_id", parent_category_id
+                )
+
             except Exception as ex:
                 return jsonify({"error": str(ex)}), 422
             query += ", ".join(update_fields) + " WHERE id = %s"
@@ -195,27 +201,23 @@ class CategoryManagement:
                             400,
                         )
 
-                    new_data = select_from_table(self.table_name, id=id)
-                    current_app.logger.debug(
-                        f"new data: {new_data}\nid passed: {id} type of id {type(id)}"
-                    )
                     conn.commit()
+                    new_data = select_from_table(self.table_name, id=id)
                     return (
                         jsonify(
                             {
                                 "msg": "user updated",
-                                "name": name,
-                                "description": description,
-                                "updated_at": updated_at,
+                                "name": new_data["name"],
+                                "description": new_data["description"],
+                                "updated at": new_data["updated_at"],
+                                "parent category id": new_data["parent_category_id"],
                             }
                         ),
                         200,
                     )
 
             except Exception as ex:
-                current_app.logger.debug(
-                    f"error occured during insertion into {self.table_name}"
-                )
+
                 return jsonify({"error": str(ex)}), 500
 
         def reset_id_sequence():

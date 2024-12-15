@@ -1,7 +1,7 @@
 import psycopg2
 from db import connect
 from psycopg2.extras import DictCursor
-from flask import current_app, jsonify
+from flask import current_app
 
 
 def insert_into_users(table_name, username, email, password, role):
