@@ -24,7 +24,8 @@ class OrderManagement:
         @self.blueprint.route("/orders/post", methods=["POST"])
         @jwt_required()
         def post():
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "request body is empty"}), 400
@@ -99,7 +100,8 @@ class OrderManagement:
         @self.blueprint.route("/orders/get", methods=["GET"])
         @jwt_required()
         def get_all_orders():
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             try:
                 orders = select_from_table(self.table_name)
                 order_items = select_from_table("order_items")
@@ -135,7 +137,8 @@ class OrderManagement:
         @self.blueprint.route("/orders/get/<id>", methods=["GET"])
         @jwt_required()
         def get_order_by_id(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             try:
                 orders = select_from_table(self.table_name, id=id)
                 order_items = select_from_table("order_items", order_id=id)
@@ -155,7 +158,8 @@ class OrderManagement:
         @self.blueprint.route("/orders/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "request body is empty"}), 400
@@ -257,7 +261,8 @@ class OrderManagement:
         @self.blueprint.route("/orders/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "empty request body"}), 400

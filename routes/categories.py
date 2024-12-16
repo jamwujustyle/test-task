@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 from db import connect
 from flask_jwt_extended import jwt_required
+
 from psycopg2.extras import DictCursor
 from queries.db_queries import (
     select_from_table,
@@ -28,7 +29,8 @@ class CategoryManagement:
         @self.blueprint.route("/categories/post", methods=["POST"])
         @jwt_required()
         def post():
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "bad request"}), 400
@@ -84,7 +86,8 @@ class CategoryManagement:
         @self.blueprint.route("/categories/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "invalid json format"})
@@ -136,7 +139,8 @@ class CategoryManagement:
         @self.blueprint.route("/categories/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "empty request body"}), 400
@@ -184,7 +188,8 @@ class CategoryManagement:
         @self.blueprint.route("/categories/delete/<id>", methods=["DELETE"])
         @jwt_required()
         def delete(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             try:
                 category_to_delete = select_from_table(self.table_name, id=id)
                 if not category_to_delete:

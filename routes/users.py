@@ -122,6 +122,8 @@ class UserManagement:
         @self.blueprint.route("/users/get", methods=["GET"])
         @jwt_required()
         def get_all_users():
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             """fetches all users from table "users" """
             query = "SELECT * FROM users;"
             with connect() as conn:
@@ -147,8 +149,9 @@ class UserManagement:
         @self.blueprint.route("/users/get/<id>", methods=["GET", "POST"])
         @jwt_required()
         def get_user_by_id(id):
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             """get user by id"""
-
             query = "SELECT * FROM users WHERE id = %s"
             with connect() as conn:
                 cursor = conn.cursor(cursor_factory=DictCursor)
@@ -182,7 +185,8 @@ class UserManagement:
             email = data.get("email")
             password = data.get("password")
 
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             if email_validation(email) is not True:
                 return email_validation(email)
 
@@ -220,7 +224,8 @@ class UserManagement:
         @jwt_required()
         def patch(id):
             """UPDATES USER PARTIALLY"""
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             try:
                 id = int(id)
             except ValueError as ve:
@@ -278,7 +283,8 @@ class UserManagement:
         @jwt_required()
         def delete(id):
             """deletes by user id"""
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             user = select_from_table(self.table_name, id=id)
             if not user:
                 return jsonify({"error": "user not found"}), 404

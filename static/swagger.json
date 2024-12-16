@@ -888,6 +888,32 @@
       }
     ]
   }
+},
+"/cart/delete/user/{id}": {
+  "delete": {
+    "tags": ["cart"],
+    "summary": "delete cart",
+    "description": "deletes cart for the current user, jwt required",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "type": "integer",
+        "required": true
+      }
+    ],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "responses": [
+      {
+        "200": {"description": "deleted successfully"},
+        "404": {"description": "could not find cart for given user"}
+      }
+    ]
+  }
 }
   },
   

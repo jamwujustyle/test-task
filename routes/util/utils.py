@@ -47,7 +47,8 @@ def append_for_patch(fields, params, field_name, value):
 def check_for_admin():
     claims = get_jwt()
     if claims.get("role") != "admin":
-        return jsonify({"error": "insufficient permissions"}), 401
+        return None
+    return True
 
 
 def reset_sequence_id(table_name):

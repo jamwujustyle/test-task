@@ -22,7 +22,8 @@ class ProductManagement:
         @self.blueprint.route("/products/post", methods=["POST"])
         @jwt_required()
         def post():
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "missinq required arguments"}), 400
@@ -74,7 +75,8 @@ class ProductManagement:
         @self.blueprint.route("/products/put/<id>", methods=["PUT"])
         @jwt_required()
         def put(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "empty request body"}), 400
@@ -120,7 +122,8 @@ class ProductManagement:
         @self.blueprint.route("/products/patch/<id>", methods=["PATCH"])
         @jwt_required()
         def patch(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             data = request.get_json()
             if not data:
                 return jsonify({"error": "request body is empty"}), 400
@@ -163,7 +166,8 @@ class ProductManagement:
         @self.blueprint.route("/products/delete/<id>", methods=["DELETE"])
         @jwt_required()
         def delete(id):
-            check_for_admin()
+            if check_for_admin() is None:
+                return jsonify({"error": "insufficient permissions"}), 401
             product_to_delete = select_from_table(self.table_name, id=id)
             try:
                 result = delete_records_from_table(self.table_name, id=id)
