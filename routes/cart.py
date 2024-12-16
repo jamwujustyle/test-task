@@ -129,6 +129,7 @@ class CartManagement:
                                 (id,),
                             )
                             conn.commit()
+                            reset_sequence_id(self.table_name)
                             return (
                                 jsonify({"msg": "user's cart deleted successfully"}),
                                 200,
